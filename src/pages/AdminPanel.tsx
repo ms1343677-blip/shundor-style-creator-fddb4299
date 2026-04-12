@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import {
-  LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X, ChevronRight
+  LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X, ChevronRight, ShoppingCart, Check, XCircle
 } from "lucide-react";
 
-type Tab = "dashboard" | "products" | "packages";
+type Tab = "dashboard" | "products" | "packages" | "orders";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -53,6 +53,20 @@ const AdminPanel = () => {
       let q = supabase.from("packages").select("*, products(name)").order("sort_order");
       if (selectedProductId) q = q.eq("product_id", selectedProductId);
       const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: orders, refetch: refetchOrders } = useQuery({
+    queryKey: ["admin-orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, products(name), packages(name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error) throw error;
       return data;
     },
@@ -121,10 +135,19 @@ const AdminPanel = () => {
 
   const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin";
 
+  const updateOrderStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchOrders(),
+  });
+
   const sidebarItems = [
     { id: "dashboard" as Tab, label: "Dashboard", icon: LayoutDashboard },
     { id: "products" as Tab, label: "Products", icon: Package },
     { id: "packages" as Tab, label: "Packages", icon: Layers },
+    { id: "orders" as Tab, label: "Orders", icon: ShoppingCart },
   ];
 
   return (
