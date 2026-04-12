@@ -71,23 +71,11 @@ const ProductDetail = () => {
           setLoading(false);
           return;
         }
-        // Deduct wallet and create order
-        const { error: orderError } = await supabase.from("orders").insert({
-          user_id: user.id,
-          product_id: id!,
-          package_id: selectedPackage,
-          game_id: gameId,
-          payment_method: "wallet",
-          amount: selectedPkg.price,
-          status: "pending",
+        const { data, error } = await supabase.functions.invoke("wallet-order", {
+          body: { product_id: id, package_id: selectedPackage, game_id: gameId },
         });
-        if (orderError) throw orderError;
-
-        // Deduct balance via admin function (use edge function or direct update)
-        const newBalance = wallet.balance - selectedPkg.price;
-        const { error: walletError } = await supabase.from("wallets").update({ balance: newBalance }).eq("user_id", user.id);
-        // Note: This update may fail if user doesn't have admin role; in that case we need an edge function
-        // For now, we rely on the wallet deduction to work through the admin policy or a dedicated function
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
 
         toast({ title: "অর্ডার সফল! ✅", description: "আপনার অর্ডার সফলভাবে প্লেস হয়েছে।" });
         refetchWallet();
