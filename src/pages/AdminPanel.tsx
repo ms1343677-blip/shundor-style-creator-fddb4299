@@ -285,6 +285,46 @@ const AdminPanel = () => {
               </div>
             </div>
           )}
+
+          {activeTab === "orders" && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-border"><h3 className="font-semibold text-foreground">All Orders</h3></div>
+                <div className="divide-y divide-border">
+                  {orders?.map((order: any) => (
+                    <div key={order.id} className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-foreground">{order.products?.name} — {order.packages?.name}</p>
+                          <p className="text-xs text-muted-foreground">Game ID: {order.game_id} • ৳{order.amount} • {order.payment_method}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(order.created_at).toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            order.status === "completed" ? "bg-green-500/10 text-green-600" :
+                            order.status === "cancelled" ? "bg-red-500/10 text-red-600" :
+                            order.status === "processing" ? "bg-blue-500/10 text-blue-600" :
+                            "bg-yellow-500/10 text-yellow-600"
+                          }`}>{order.status}</span>
+                          {order.status === "pending" && (
+                            <>
+                              <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "completed" })} className="p-1.5 hover:bg-green-500/10 rounded-lg" title="Complete">
+                                <Check className="w-4 h-4 text-green-600" />
+                              </button>
+                              <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "cancelled" })} className="p-1.5 hover:bg-destructive/10 rounded-lg" title="Cancel">
+                                <XCircle className="w-4 h-4 text-destructive" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {!orders?.length && <div className="p-8 text-center text-muted-foreground text-sm">No orders yet</div>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
