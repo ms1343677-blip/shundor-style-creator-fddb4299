@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
+import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -47,14 +48,16 @@ async function finalizeTransaction(supabaseAdmin: ReturnType<typeof createClient
     finalized_at: new Date().toISOString(),
   };
 
-  await supabaseAdmin
-    .from("transactions")
-    .update({
-      status: "processing",
-      uddoktapay_invoice_id: invoiceId ?? txn.uddoktapay_invoice_id,
-      metadata: nextMeta,
-    })
-    .eq("id", txn.id);
+  if (txn.status !== "processing") {
+    await supabaseAdmin
+      .from("transactions")
+      .update({
+        status: "processing",
+        uddoktapay_invoice_id: invoiceId ?? txn.uddoktapay_invoice_id,
+        metadata: nextMeta,
+      })
+      .eq("id", txn.id);
+  }
 
   if (txnType === "add_money") {
     const { data: wallet } = await supabaseAdmin.from("wallets").select("*").eq("user_id", txn.user_id).maybeSingle();
@@ -87,35 +90,79 @@ async function finalizeTransaction(supabaseAdmin: ReturnType<typeof createClient
       metadata: nextMeta,
     })
     .eq("id", txn.id);
+
+  return txnType;
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Unauthorized");
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) throw new Error("Unauthorized");
+
     const body = await req.json();
-    const payload = asObject(body);
-    const payloadMeta = asObject(payload.metadata);
-    const invoiceId = firstString(payload.invoice_id, payload.invoiceId, payload.payment_id, payload.paymentId, payloadMeta.invoice_id);
-    const transactionId = firstString(payload.transaction_id, payload.transactionId, payloadMeta.transaction_id);
+    const params = asObject(body.params);
+    const transactionId = firstString(body.transactionId, body.transaction_id, params.transaction_id);
+    const cancelled = body.cancelled === true || normalizedStatus(params.status) === "cancel";
 
-    if (!invoiceId && !transactionId) throw new Error("No payment reference found");
+    if (!transactionId) throw new Error("Transaction id is required");
 
-    const query = supabaseAdmin.from("transactions").select("*");
-    const { data: txn, error: txnError } = transactionId
-      ? await query.eq("id", transactionId).maybeSingle()
-      : await query.eq("uddoktapay_invoice_id", invoiceId!).maybeSingle();
+    const { data: txn, error: txnError } = await supabaseAdmin
+      .from("transactions")
+      .select("*")
+      .eq("id", transactionId)
+      .eq("user_id", user.id)
+      .maybeSingle();
     if (txnError || !txn) throw txnError ?? new Error("Transaction not found");
 
+    const txnType = firstString(txn.type, asObject(txn.metadata).type) || "payment";
     if (txn.status === "completed") {
-      return new Response(JSON.stringify({ status: "already_completed" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ status: "already_completed", type: txnType }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const verifyData = invoiceId ? await verifyPayment(invoiceId) : payload;
+    if (cancelled) {
+      await supabaseAdmin.from("transactions").update({ status: "failed" }).eq("id", txn.id);
+      return new Response(JSON.stringify({ status: "cancelled", type: txnType }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const initResponse = asObject(asObject(txn.metadata).init_response);
+    const initNested = asObject(initResponse.data);
+    const invoiceId = firstString(
+      params.invoice_id,
+      params.invoiceId,
+      params.payment_id,
+      params.paymentId,
+      params.invoice,
+      txn.uddoktapay_invoice_id,
+      initResponse.invoice_id,
+      initNested.invoice_id,
+      initResponse.invoiceId,
+      initNested.invoiceId,
+    );
+
+    if (!invoiceId) {
+      return new Response(JSON.stringify({ status: "pending", type: txnType, message: "Invoice id not available yet" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const verifyData = await verifyPayment(invoiceId);
     const verifyObj = asObject(verifyData);
     const verifyNested = asObject(verifyObj.data);
     const providerStatus = firstString(verifyObj.status, verifyObj.payment_status, verifyNested.status, verifyNested.payment_status);
@@ -125,22 +172,31 @@ Deno.serve(async (req) => {
         .from("transactions")
         .update({
           status: "failed",
-          uddoktapay_invoice_id: invoiceId ?? txn.uddoktapay_invoice_id,
+          uddoktapay_invoice_id: invoiceId,
           metadata: { ...asObject(txn.metadata), verify_data: verifyData },
         })
         .eq("id", txn.id);
-      return new Response(JSON.stringify({ status: "failed" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ status: "failed", type: txnType }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!isCompleted(providerStatus)) {
-      return new Response(JSON.stringify({ status: "pending" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ status: "pending", type: txnType }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    await finalizeTransaction(supabaseAdmin, txn, invoiceId, verifyData);
-    return new Response(JSON.stringify({ status: "completed" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    const finalizedType = await finalizeTransaction(supabaseAdmin, txn, invoiceId, verifyData);
+    return new Response(JSON.stringify({ status: "completed", type: finalizedType }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Webhook error:", message);
-    return new Response(JSON.stringify({ error: message }), { status: 400, headers: { "Content-Type": "application/json" } });
+    console.error("Finalize error:", message);
+    return new Response(JSON.stringify({ error: message }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
