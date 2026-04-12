@@ -13,10 +13,9 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Unauthorized");
 
-    const supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
-      global: { headers: { Authorization: authHeader } }
-    });
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) throw new Error("Unauthorized");
 
     const body = await req.json();
@@ -24,7 +23,6 @@ Deno.serve(async (req) => {
 
     if (!product_id || !package_id || !game_id) throw new Error("Missing required fields");
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Get package price
     const { data: pkg, error: pkgError } = await supabaseAdmin
