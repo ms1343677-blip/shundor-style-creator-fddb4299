@@ -122,6 +122,14 @@ const AdminPanel = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-packages"] }),
   });
 
+  const updateOrderStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchOrders(),
+  });
+
   const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategory("Game"); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); };
   const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); };
 
@@ -134,14 +142,6 @@ const AdminPanel = () => {
   if (!user) return null;
 
   const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin";
-
-  const updateOrderStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("orders").update({ status }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => refetchOrders(),
-  });
 
   const sidebarItems = [
     { id: "dashboard" as Tab, label: "Dashboard", icon: LayoutDashboard },
