@@ -1,12 +1,12 @@
 import { Wallet, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const isLoggedIn = location.pathname !== "/login";
+  const { user, isReady, signOut } = useAuth();
 
   const menuItems = [
     { label: "My Account", path: "/profile" },
@@ -16,6 +16,12 @@ const Header = () => {
     { label: "Add Money", path: "/add-money" },
     { label: "Contact Us", path: "/" },
   ];
+
+  const handleLogout = async () => {
+    await signOut();
+    setMenuOpen(false);
+    navigate("/login");
+  };
 
   return (
     <>
@@ -29,7 +35,7 @@ const Header = () => {
             <span className="text-primary"> BAZZER</span>
           </h1>
           <div className="flex items-center gap-3">
-            {isLoggedIn ? (
+            {isReady && user ? (
               <>
                 <button className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-sm font-medium">
                   <Wallet className="w-4 h-4" /> ০৳
@@ -53,21 +59,26 @@ const Header = () => {
         </div>
       </header>
 
-      {menuOpen && (
+      {menuOpen && user && (
         <div className="fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-foreground/30" onClick={() => setMenuOpen(false)} />
           <div className="ml-auto relative bg-card w-72 h-full shadow-xl animate-fade-in overflow-y-auto">
             <div className="p-5 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">
-                  U
+                  {user.email?.charAt(0).toUpperCase() || "U"}
                 </div>
-                <div>
-                  <p className="font-semibold text-foreground">Hi, User</p>
-                  <p className="text-xs text-muted-foreground">user@example.com</p>
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground truncate">
+                    Hi, {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
               </div>
-              <button className="mt-3 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm">
+              <button
+                onClick={handleLogout}
+                className="mt-3 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm"
+              >
                 Logout
               </button>
             </div>
