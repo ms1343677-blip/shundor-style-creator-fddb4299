@@ -198,6 +198,14 @@ const AdminPanel = () => {
                   <p className="text-sm text-muted-foreground">Active Products</p>
                   <p className="text-3xl font-bold text-success mt-1">{products?.filter((p) => p.is_active).length || 0}</p>
                 </div>
+                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-3xl font-bold text-primary mt-1">{orders?.length || 0}</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Pending Orders</p>
+                  <p className="text-3xl font-bold text-yellow-500 mt-1">{orders?.filter((o: any) => o.status === "pending").length || 0}</p>
+                </div>
               </div>
             </div>
           )}
