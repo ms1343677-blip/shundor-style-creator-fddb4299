@@ -23,7 +23,6 @@ Deno.serve(async (req) => {
 
     if (!product_id || !package_id || !game_id) throw new Error("Missing required fields");
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Get package price
     const { data: pkg, error: pkgError } = await supabaseAdmin
