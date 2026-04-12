@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import {
-  LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X, ChevronRight
+  LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X, ChevronRight, ShoppingCart, Check, XCircle
 } from "lucide-react";
 
-type Tab = "dashboard" | "products" | "packages";
+type Tab = "dashboard" | "products" | "packages" | "orders";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -53,6 +53,20 @@ const AdminPanel = () => {
       let q = supabase.from("packages").select("*, products(name)").order("sort_order");
       if (selectedProductId) q = q.eq("product_id", selectedProductId);
       const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: orders, refetch: refetchOrders } = useQuery({
+    queryKey: ["admin-orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, products(name), packages(name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error) throw error;
       return data;
     },
@@ -121,10 +135,19 @@ const AdminPanel = () => {
 
   const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin";
 
+  const updateOrderStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchOrders(),
+  });
+
   const sidebarItems = [
     { id: "dashboard" as Tab, label: "Dashboard", icon: LayoutDashboard },
     { id: "products" as Tab, label: "Products", icon: Package },
     { id: "packages" as Tab, label: "Packages", icon: Layers },
+    { id: "orders" as Tab, label: "Orders", icon: ShoppingCart },
   ];
 
   return (
@@ -174,6 +197,14 @@ const AdminPanel = () => {
                 <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
                   <p className="text-sm text-muted-foreground">Active Products</p>
                   <p className="text-3xl font-bold text-success mt-1">{products?.filter((p) => p.is_active).length || 0}</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-3xl font-bold text-primary mt-1">{orders?.length || 0}</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Pending Orders</p>
+                  <p className="text-3xl font-bold text-yellow-500 mt-1">{orders?.filter((o: any) => o.status === "pending").length || 0}</p>
                 </div>
               </div>
             </div>
@@ -258,6 +289,46 @@ const AdminPanel = () => {
                     </div>
                   ))}
                   {!packages?.length && <div className="p-8 text-center text-muted-foreground text-sm">{selectedProductId ? "No packages" : "Select a product"}</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "orders" && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-border"><h3 className="font-semibold text-foreground">All Orders</h3></div>
+                <div className="divide-y divide-border">
+                  {orders?.map((order: any) => (
+                    <div key={order.id} className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-foreground">{order.products?.name} — {order.packages?.name}</p>
+                          <p className="text-xs text-muted-foreground">Game ID: {order.game_id} • ৳{order.amount} • {order.payment_method}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(order.created_at).toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            order.status === "completed" ? "bg-green-500/10 text-green-600" :
+                            order.status === "cancelled" ? "bg-red-500/10 text-red-600" :
+                            order.status === "processing" ? "bg-blue-500/10 text-blue-600" :
+                            "bg-yellow-500/10 text-yellow-600"
+                          }`}>{order.status}</span>
+                          {order.status === "pending" && (
+                            <>
+                              <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "completed" })} className="p-1.5 hover:bg-green-500/10 rounded-lg" title="Complete">
+                                <Check className="w-4 h-4 text-green-600" />
+                              </button>
+                              <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "cancelled" })} className="p-1.5 hover:bg-destructive/10 rounded-lg" title="Cancel">
+                                <XCircle className="w-4 h-4 text-destructive" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {!orders?.length && <div className="p-8 text-center text-muted-foreground text-sm">No orders yet</div>}
                 </div>
               </div>
             </div>

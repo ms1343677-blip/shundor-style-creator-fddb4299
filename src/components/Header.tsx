@@ -2,11 +2,24 @@ import { Wallet, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isReady, signOut } = useAuth();
+
+  const { data: wallet } = useQuery({
+    queryKey: ["wallet"],
+    queryFn: async () => {
+      await supabase.rpc("ensure_wallet");
+      const { data, error } = await supabase.from("wallets").select("*").eq("user_id", user!.id).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
   const menuItems = [
     { label: "My Account", path: "/profile" },
@@ -37,8 +50,8 @@ const Header = () => {
           <div className="flex items-center gap-3">
             {isReady && user ? (
               <>
-                <button className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-sm font-medium">
-                  <Wallet className="w-4 h-4" /> ০৳
+                <button onClick={() => navigate("/add-money")} className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-sm font-medium">
+                  <Wallet className="w-4 h-4" /> {wallet?.balance?.toFixed(0) || "0"}৳
                 </button>
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
