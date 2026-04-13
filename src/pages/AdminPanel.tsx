@@ -1166,23 +1166,48 @@ const PaymentTab = ({ user }: { user: any }) => {
     toast({ title: "পেমেন্ট নাম্বার সেভ হয়েছে!" });
   };
 
-  // Calculate balance from SMS since last reset
+  // Pending messages
+  const { data: pendingMessages, refetch: refetchPending } = useQuery({
+    queryKey: ["admin-pending-sms"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sms_messages").select("*").eq("status", "pending").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const bkashTracker = balanceData?.find((b: any) => b.provider === "bKash");
   const nagadTracker = balanceData?.find((b: any) => b.provider === "Nagad");
 
-  const bkashBalance = smsMessages
-    ?.filter((m: any) => m.sender === "bKash" && new Date(m.created_at) >= new Date(bkashTracker?.reset_at || 0))
-    .reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0;
-
-  const nagadBalance = smsMessages
-    ?.filter((m: any) => m.sender === "Nagad" && new Date(m.created_at) >= new Date(nagadTracker?.reset_at || 0))
-    .reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0;
+  const bkashBalance = bkashTracker?.last_balance || 0;
+  const nagadBalance = nagadTracker?.last_balance || 0;
 
   const resetBalance = async (provider: string) => {
-    const { error } = await supabase.from("balance_tracker").update({ reset_at: new Date().toISOString(), total_received: 0 }).eq("provider", provider);
+    const { error } = await supabase.from("balance_tracker").update({ reset_at: new Date().toISOString(), last_balance: 0, total_received: 0 }).eq("provider", provider);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     refetchBalance();
-    toast({ title: `${provider} ব্যালেন্স রিসেট হয়েছে!` });
+    toast({ title: `${provider} ব্যালেন্স রিসেট হয়েছে! এখন থেকে নতুন করে ট্র্যাক হবে।` });
+  };
+
+  const approvePending = async (msg: any) => {
+    // Approve: update balance_tracker and mark as verified
+    const provider = msg.sender;
+    if (msg.sms_balance !== null) {
+      await supabase.from("balance_tracker").update({ last_balance: msg.sms_balance }).eq("provider", provider);
+    }
+    await supabase.from("sms_messages").update({ status: "verified" }).eq("id", msg.id);
+    refetchPending();
+    refetchBalance();
+    queryClient.invalidateQueries({ queryKey: ["admin-sms-messages"] });
+    toast({ title: "মেসেজ ভেরিফাই হয়েছে এবং ব্যালেন্স আপডেট হয়েছে!" });
+  };
+
+  const rejectPending = async (msg: any) => {
+    await supabase.from("sms_messages").update({ status: "rejected" }).eq("id", msg.id);
+    refetchPending();
+    queryClient.invalidateQueries({ queryKey: ["admin-sms-messages"] });
+    toast({ title: "মেসেজ রিজেক্ট করা হয়েছে!" });
   };
 
   return (
@@ -1224,6 +1249,48 @@ const PaymentTab = ({ user }: { user: any }) => {
           <p className="text-[9px] text-muted-foreground mt-1">Reset: {nagadTracker ? new Date(nagadTracker.reset_at).toLocaleString() : "—"}</p>
         </div>
       </div>
+
+      {/* Pending Messages (Balance Mismatch) */}
+      {(pendingMessages?.length || 0) > 0 && (
+        <div className="bg-card rounded-xl border-2 border-yellow-500/50 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-border bg-yellow-500/10">
+            <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2">
+              ⚠️ Pending Messages ({pendingMessages?.length || 0})
+              <span className="text-[10px] font-normal text-muted-foreground">— ব্যালেন্স মিলেনি</span>
+            </h3>
+          </div>
+          <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
+            {pendingMessages?.map((msg: any) => (
+              <div key={msg.id} className="px-4 py-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                    msg.sender === "bKash" ? "bg-[#E2136E]/10 text-[#E2136E]" :
+                    msg.sender === "Nagad" ? "bg-[#F6921E]/10 text-[#F6921E]" :
+                    "bg-muted text-muted-foreground"
+                  }`}>{msg.sender}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-600 font-bold">Pending</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{new Date(msg.created_at).toLocaleString()}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] mb-1.5">
+                  <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-primary">৳{msg.amount || 0}</span></div>
+                  <div><span className="text-muted-foreground">SMS Balance: </span><span className="font-bold text-foreground">৳{msg.sms_balance?.toLocaleString() || "—"}</span></div>
+                  <div><span className="text-muted-foreground">TrxID: </span><span className="font-semibold font-mono text-foreground">{msg.transaction_id || "—"}</span></div>
+                  <div><span className="text-muted-foreground">Phone: </span><span className="font-semibold text-foreground">{msg.phone_number || "—"}</span></div>
+                </div>
+                <div className="text-[10px] text-muted-foreground bg-secondary rounded p-1.5 mb-2 break-all">{msg.raw_message}</div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-[11px]" onClick={() => approvePending(msg)}>
+                    <Check className="w-3 h-3 mr-1" /> Approve
+                  </Button>
+                  <Button size="sm" variant="destructive" className="h-7 text-[11px]" onClick={() => rejectPending(msg)}>
+                    <XCircle className="w-3 h-3 mr-1" /> Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Payment History (Used SMS) */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">

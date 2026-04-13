@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_balance: number
           provider: string
           reset_at: string
           total_received: number
@@ -26,6 +27,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          last_balance?: number
           provider: string
           reset_at?: string
           total_received?: number
@@ -34,6 +36,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          last_balance?: number
           provider?: string
           reset_at?: string
           total_received?: number
@@ -365,6 +368,8 @@ export type Database = {
           phone_number: string | null
           raw_message: string
           sender: string
+          sms_balance: number | null
+          status: string
           transaction_id: string | null
           updated_at: string
           used_for_order_id: string | null
@@ -378,6 +383,8 @@ export type Database = {
           phone_number?: string | null
           raw_message?: string
           sender?: string
+          sms_balance?: number | null
+          status?: string
           transaction_id?: string | null
           updated_at?: string
           used_for_order_id?: string | null
@@ -391,6 +398,8 @@ export type Database = {
           phone_number?: string | null
           raw_message?: string
           sender?: string
+          sms_balance?: number | null
+          status?: string
           transaction_id?: string | null
           updated_at?: string
           used_for_order_id?: string | null

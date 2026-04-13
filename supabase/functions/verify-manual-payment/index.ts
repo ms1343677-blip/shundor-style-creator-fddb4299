@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
       .select("*")
       .eq("transaction_id", transaction_id)
       .eq("is_used", false)
+      .in("status", ["verified"])
       .maybeSingle();
 
     if (smsError) throw smsError;
