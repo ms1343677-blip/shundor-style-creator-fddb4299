@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,12 +6,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X, ChevronRight, ShoppingCart, Check, XCircle
+  LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X,
+  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
-type Tab = "dashboard" | "products" | "packages" | "orders";
+type Tab = "dashboard" | "products" | "packages" | "orders" | "users" | "banners" | "settings";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -33,10 +35,21 @@ const AdminPanel = () => {
   const [pkgPrice, setPkgPrice] = useState("");
   const [pkgSortOrder, setPkgSortOrder] = useState(0);
 
+  // Banner form
+  const [bannerTitle, setBannerTitle] = useState("");
+  const [bannerImageUrl, setBannerImageUrl] = useState("");
+  const [bannerLinkUrl, setBannerLinkUrl] = useState("");
+  const [bannerSortOrder, setBannerSortOrder] = useState(0);
+  const [editingBanner, setEditingBanner] = useState<any>(null);
+
+  // Settings form
+  const [settingsForm, setSettingsForm] = useState<Record<string, string>>({});
+
   useEffect(() => {
     if (isReady && !user) navigate("/login");
   }, [isReady, user, navigate]);
 
+  // Queries
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
     queryFn: async () => {
@@ -73,6 +86,56 @@ const AdminPanel = () => {
     enabled: !!user,
   });
 
+  const { data: siteSettings } = useQuery({
+    queryKey: ["admin-site-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("site_settings").select("*").order("key");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: banners, refetch: refetchBanners } = useQuery({
+    queryKey: ["admin-banners"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("banners").select("*").order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: userRoles } = useQuery({
+    queryKey: ["admin-user-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: wallets } = useQuery({
+    queryKey: ["admin-wallets"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("wallets").select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Load settings into form
+  useEffect(() => {
+    if (siteSettings) {
+      const map: Record<string, string> = {};
+      siteSettings.forEach((s: any) => { map[s.key] = s.value; });
+      setSettingsForm(map);
+    }
+  }, [siteSettings]);
+
+  // Mutations
   const saveProduct = useMutation({
     mutationFn: async () => {
       const payload = { name: pName, category: pCategory, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder };
@@ -84,7 +147,7 @@ const AdminPanel = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-products"] }); resetProductForm(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-products"] }); resetProductForm(); toast({ title: "সফল!" }); },
   });
 
   const deleteProduct = useMutation({
@@ -109,7 +172,7 @@ const AdminPanel = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-packages"] }); resetPackageForm(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-packages"] }); resetPackageForm(); toast({ title: "সফল!" }); },
   });
 
   const deletePackage = useMutation({
@@ -130,11 +193,51 @@ const AdminPanel = () => {
     onSuccess: () => refetchOrders(),
   });
 
+  const saveBanner = useMutation({
+    mutationFn: async () => {
+      const payload = { title: bannerTitle, image_url: bannerImageUrl, link_url: bannerLinkUrl, sort_order: bannerSortOrder };
+      if (editingBanner) {
+        const { error } = await supabase.from("banners").update(payload).eq("id", editingBanner.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("banners").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { refetchBanners(); resetBannerForm(); toast({ title: "সফল!" }); },
+  });
+
+  const deleteBanner = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("banners").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => refetchBanners(),
+  });
+
+  const toggleBanner = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => { const { error } = await supabase.from("banners").update({ is_active }).eq("id", id); if (error) throw error; },
+    onSuccess: () => refetchBanners(),
+  });
+
+  const saveSettings = useMutation({
+    mutationFn: async () => {
+      for (const [key, value] of Object.entries(settingsForm)) {
+        const { error } = await supabase.from("site_settings").update({ value }).eq("key", key);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-site-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+      toast({ title: "সেটিংস সেভ হয়েছে!" });
+    },
+  });
+
   const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategory("Game"); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); };
   const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); };
+  const resetBannerForm = () => { setEditingBanner(null); setBannerTitle(""); setBannerImageUrl(""); setBannerLinkUrl(""); setBannerSortOrder(0); };
 
   const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategory(p.category); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); };
   const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); };
+  const startEditBanner = (b: any) => { setEditingBanner(b); setBannerTitle(b.title); setBannerImageUrl(b.image_url); setBannerLinkUrl(b.link_url || ""); setBannerSortOrder(b.sort_order); };
 
   const handleLogout = async () => { await signOut(); navigate("/login"); };
 
@@ -143,194 +246,356 @@ const AdminPanel = () => {
 
   const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin";
 
-  const sidebarItems = [
-    { id: "dashboard" as Tab, label: "Dashboard", icon: LayoutDashboard },
-    { id: "products" as Tab, label: "Products", icon: Package },
-    { id: "packages" as Tab, label: "Packages", icon: Layers },
-    { id: "orders" as Tab, label: "Orders", icon: ShoppingCart },
+  const sidebarItems: { id: Tab; label: string; icon: any }[] = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "products", label: "Products", icon: Package },
+    { id: "packages", label: "Packages", icon: Layers },
+    { id: "orders", label: "Orders", icon: ShoppingCart },
+    { id: "users", label: "Users", icon: Users },
+    { id: "banners", label: "Banners", icon: Image },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
+
+  const settingsFields = [
+    { key: "site_name", label: "Site Name", type: "text" },
+    { key: "notice_text", label: "Notice Text", type: "textarea" },
+    { key: "notice_enabled", label: "Notice Enabled", type: "toggle" },
+    { key: "whatsapp_number", label: "WhatsApp Number", type: "text" },
+    { key: "telegram_link", label: "Telegram Link", type: "text" },
+    { key: "facebook_link", label: "Facebook Link", type: "text" },
+    { key: "support_hours", label: "Support Hours", type: "text" },
+    { key: "primary_color", label: "Primary Color (HSL)", type: "color" },
+    { key: "notice_color", label: "Notice Color (HSL)", type: "color" },
+    { key: "nav_color", label: "Header Color (HSL)", type: "color" },
+    { key: "footer_color", label: "Footer Color (HSL)", type: "color" },
+  ];
+
+  const colorPresets = [
+    { label: "Green", value: "152 60% 30%" },
+    { label: "Blue", value: "220 70% 50%" },
+    { label: "Purple", value: "270 60% 50%" },
+    { label: "Red", value: "0 70% 50%" },
+    { label: "Orange", value: "25 90% 50%" },
+    { label: "Teal", value: "180 60% 35%" },
+    { label: "Pink", value: "330 70% 50%" },
+    { label: "Dark", value: "220 30% 15%" },
   ];
 
   return (
     <div className="min-h-screen bg-muted flex">
       {sidebarOpen && <div className="fixed inset-0 bg-foreground/30 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-nav text-nav-foreground transform transition-transform lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      {/* Sidebar */}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-60 bg-nav text-nav-foreground flex flex-col transform lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         <div className="p-4 border-b border-nav-foreground/10">
-          <h1 className="text-xl font-bold"><span className="text-destructive">RG</span> BAZZER</h1>
-          <p className="text-xs text-nav-foreground/60 mt-1">Admin Panel</p>
+          <h1 className="text-lg font-black"><span className="text-destructive">RG</span> BAZZER</h1>
+          <p className="text-[10px] text-nav-foreground/50 mt-0.5">Admin Panel</p>
         </div>
-        <nav className="p-3 space-y-1">
+        <nav className="p-2 space-y-0.5 flex-1 overflow-y-auto">
           {sidebarItems.map((item) => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${activeTab === item.id ? "bg-primary text-primary-foreground" : "text-nav-foreground hover:bg-nav-foreground/10"}`}>
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] ${activeTab === item.id ? "bg-primary text-primary-foreground font-semibold" : "text-nav-foreground/80 active:bg-nav-foreground/10"}`}>
               <item.icon className="w-4 h-4" /> {item.label}
             </button>
           ))}
         </nav>
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-nav-foreground/10">
-          <div className="text-xs text-nav-foreground/60 mb-2 truncate">{user.email}</div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-sm text-nav-foreground/80 hover:text-destructive transition-colors">
-            <LogOut className="w-4 h-4" /> Logout
+        <div className="p-3 border-t border-nav-foreground/10">
+          <p className="text-[10px] text-nav-foreground/40 truncate mb-1">{user.email}</p>
+          <button onClick={handleLogout} className="flex items-center gap-2 text-[12px] text-nav-foreground/60 active:text-destructive">
+            <LogOut className="w-3.5 h-3.5" /> Logout
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 min-h-screen">
-        <header className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+      {/* Main */}
+      <main className="flex-1 min-h-screen min-w-0">
+        <header className="bg-card border-b border-border px-4 h-12 flex items-center gap-3 sticky top-0 z-30">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden"><Menu className="w-5 h-5 text-foreground" /></button>
-          <h2 className="text-lg font-semibold text-foreground capitalize">{activeTab}</h2>
-          <span className="ml-auto text-sm text-muted-foreground">Hi, {displayName}</span>
+          <h2 className="text-[15px] font-bold text-foreground capitalize">{activeTab}</h2>
+          <span className="ml-auto text-[12px] text-muted-foreground">Hi, {displayName}</span>
         </header>
 
-        <div className="p-4 max-w-5xl">
+        <div className="p-3 sm:p-4 max-w-5xl">
+          {/* DASHBOARD */}
           {activeTab === "dashboard" && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Total Products</p>
-                  <p className="text-3xl font-bold text-primary mt-1">{products?.length || 0}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              {[
+                { label: "Products", value: products?.length || 0, color: "text-primary" },
+                { label: "Active Products", value: products?.filter((p) => p.is_active).length || 0, color: "text-success" },
+                { label: "Packages", value: packages?.length || 0, color: "text-accent" },
+                { label: "Total Orders", value: orders?.length || 0, color: "text-primary" },
+                { label: "Pending Orders", value: orders?.filter((o: any) => o.status === "pending").length || 0, color: "text-notice-foreground" },
+                { label: "Users", value: wallets?.length || 0, color: "text-accent" },
+              ].map((s) => (
+                <div key={s.label} className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                  <p className={`text-2xl font-black mt-0.5 ${s.color}`}>{s.value}</p>
                 </div>
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Total Packages</p>
-                  <p className="text-3xl font-bold text-accent mt-1">{packages?.length || 0}</p>
-                </div>
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Active Products</p>
-                  <p className="text-3xl font-bold text-success mt-1">{products?.filter((p) => p.is_active).length || 0}</p>
-                </div>
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Total Orders</p>
-                  <p className="text-3xl font-bold text-primary mt-1">{orders?.length || 0}</p>
-                </div>
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Pending Orders</p>
-                  <p className="text-3xl font-bold text-yellow-500 mt-1">{orders?.filter((o: any) => o.status === "pending").length || 0}</p>
-                </div>
-              </div>
+              ))}
             </div>
           )}
 
+          {/* PRODUCTS */}
           {activeTab === "products" && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                <h3 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> {editingProduct ? "Edit Product" : "Add New Product"}
+            <div className="space-y-3">
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> {editingProduct ? "Edit Product" : "Add Product"}
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label><Input value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Free Fire TopUp (BD)" /></div>
-                  <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Category</label><Input value={pCategory} onChange={(e) => setPCategory(e.target.value)} placeholder="Game" /></div>
-                  <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Sub Category</label><Input value={pSubCategory} onChange={(e) => setPSubCategory(e.target.value)} placeholder="Top up" /></div>
-                  <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Image URL</label><Input value={pImageUrl} onChange={(e) => setPImageUrl(e.target.value)} placeholder="https://..." /></div>
-                  <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Sort Order</label><Input type="number" value={pSortOrder} onChange={(e) => setPSortOrder(Number(e.target.value))} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Name</label><Input value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Free Fire TopUp" className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Category</label><Input value={pCategory} onChange={(e) => setPCategory(e.target.value)} className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sub Category</label><Input value={pSubCategory} onChange={(e) => setPSubCategory(e.target.value)} className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Image URL</label><Input value={pImageUrl} onChange={(e) => setPImageUrl(e.target.value)} className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort Order</label><Input type="number" value={pSortOrder} onChange={(e) => setPSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button onClick={() => saveProduct.mutate()} disabled={!pName} className="bg-primary text-primary-foreground">{editingProduct ? "Update" : "Add Product"}</Button>
-                  {editingProduct && <Button variant="outline" onClick={resetProductForm}>Cancel</Button>}
+                <div className="flex gap-2 mt-3">
+                  <Button onClick={() => saveProduct.mutate()} disabled={!pName} size="sm">{editingProduct ? "Update" : "Add"}</Button>
+                  {editingProduct && <Button variant="outline" size="sm" onClick={resetProductForm}>Cancel</Button>}
                 </div>
               </div>
-              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border"><h3 className="font-semibold text-foreground">All Products</h3></div>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-border"><h3 className="text-[13px] font-bold text-foreground">All Products</h3></div>
                 <div className="divide-y divide-border">
                   {products?.map((p) => (
-                    <div key={p.id} className="p-4 flex items-center gap-3 hover:bg-secondary/30 transition-colors">
-                      {p.image_url && <img src={p.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" />}
+                    <div key={p.id} className="px-4 py-2.5 flex items-center gap-2">
+                      {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded-lg object-cover" />}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-foreground truncate">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">{p.category} / {p.sub_category}</p>
+                        <p className="text-[13px] font-medium text-foreground truncate">{p.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{p.category}</p>
                       </div>
                       <Switch checked={p.is_active} onCheckedChange={(v) => toggleProduct.mutate({ id: p.id, is_active: v })} />
-                      <button onClick={() => startEditProduct(p)} className="p-1.5 hover:bg-secondary rounded-lg"><Pencil className="w-4 h-4 text-muted-foreground" /></button>
-                      <button onClick={() => { setSelectedProductId(p.id); setActiveTab("packages"); }} className="p-1.5 hover:bg-secondary rounded-lg"><ChevronRight className="w-4 h-4 text-muted-foreground" /></button>
-                      <button onClick={() => deleteProduct.mutate(p.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                      <button onClick={() => startEditProduct(p)} className="p-1.5 active:bg-secondary rounded-lg"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                      <button onClick={() => { setSelectedProductId(p.id); setActiveTab("packages"); }} className="p-1.5 active:bg-secondary rounded-lg"><ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                      <button onClick={() => deleteProduct.mutate(p.id)} className="p-1.5 active:bg-destructive/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                     </div>
                   ))}
-                  {!products?.length && <div className="p-8 text-center text-muted-foreground text-sm">No products yet</div>}
+                  {!products?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No products</div>}
                 </div>
               </div>
             </div>
           )}
 
+          {/* PACKAGES */}
           {activeTab === "packages" && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Filter by Product</label>
-                <select value={selectedProductId || ""} onChange={(e) => setSelectedProductId(e.target.value || null)} className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-card text-foreground">
+            <div className="space-y-3">
+              <div className="bg-card rounded-xl border border-border p-4">
+                <label className="text-[11px] text-muted-foreground mb-1 block">Filter by Product</label>
+                <select value={selectedProductId || ""} onChange={(e) => setSelectedProductId(e.target.value || null)} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card text-foreground">
                   <option value="">All Products</option>
                   {products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
               {selectedProductId && (
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-                  <h3 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2"><Plus className="w-4 h-4" /> {editingPackage ? "Edit Package" : "Add New Package"}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label><Input value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="25 Diamond 💎" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Price (TK)</label><Input type="number" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} placeholder="22" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground mb-1 block">Sort Order</label><Input type="number" value={pkgSortOrder} onChange={(e) => setPkgSortOrder(Number(e.target.value))} /></div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2"><Plus className="w-4 h-4" /> {editingPackage ? "Edit Package" : "Add Package"}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Name</label><Input value={pkgName} onChange={(e) => setPkgName(e.target.value)} className="h-9 text-[13px]" /></div>
+                    <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Price</label><Input type="number" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} className="h-9 text-[13px]" /></div>
+                    <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort</label><Input type="number" value={pkgSortOrder} onChange={(e) => setPkgSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
                   </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button onClick={() => savePackage.mutate()} disabled={!pkgName || !pkgPrice} className="bg-primary text-primary-foreground">{editingPackage ? "Update" : "Add Package"}</Button>
-                    {editingPackage && <Button variant="outline" onClick={resetPackageForm}>Cancel</Button>}
+                  <div className="flex gap-2 mt-3">
+                    <Button onClick={() => savePackage.mutate()} disabled={!pkgName || !pkgPrice} size="sm">{editingPackage ? "Update" : "Add"}</Button>
+                    {editingPackage && <Button variant="outline" size="sm" onClick={resetPackageForm}>Cancel</Button>}
                   </div>
                 </div>
               )}
-              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border"><h3 className="font-semibold text-foreground">Packages</h3></div>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-border"><h3 className="text-[13px] font-bold text-foreground">Packages</h3></div>
                 <div className="divide-y divide-border">
                   {packages?.map((pkg: any) => (
-                    <div key={pkg.id} className="p-4 flex items-center gap-3 hover:bg-secondary/30 transition-colors">
+                    <div key={pkg.id} className="px-4 py-2.5 flex items-center gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-foreground">{pkg.name}</p>
-                        <p className="text-xs text-muted-foreground">{pkg.products?.name}</p>
+                        <p className="text-[13px] font-medium text-foreground">{pkg.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{pkg.products?.name}</p>
                       </div>
-                      <span className="text-sm font-bold text-primary">৳{pkg.price}</span>
+                      <span className="text-[13px] font-bold text-primary">৳{pkg.price}</span>
                       <Switch checked={pkg.is_active} onCheckedChange={(v) => togglePackage.mutate({ id: pkg.id, is_active: v })} />
-                      <button onClick={() => startEditPackage(pkg)} className="p-1.5 hover:bg-secondary rounded-lg"><Pencil className="w-4 h-4 text-muted-foreground" /></button>
-                      <button onClick={() => deletePackage.mutate(pkg.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                      <button onClick={() => startEditPackage(pkg)} className="p-1.5 active:bg-secondary rounded-lg"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                      <button onClick={() => deletePackage.mutate(pkg.id)} className="p-1.5 active:bg-destructive/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                     </div>
                   ))}
-                  {!packages?.length && <div className="p-8 text-center text-muted-foreground text-sm">{selectedProductId ? "No packages" : "Select a product"}</div>}
+                  {!packages?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">{selectedProductId ? "No packages" : "Select a product"}</div>}
                 </div>
               </div>
             </div>
           )}
 
+          {/* ORDERS */}
           {activeTab === "orders" && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-border"><h3 className="font-semibold text-foreground">All Orders</h3></div>
-                <div className="divide-y divide-border">
-                  {orders?.map((order: any) => (
-                    <div key={order.id} className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-foreground">{order.products?.name} — {order.packages?.name}</p>
-                          <p className="text-xs text-muted-foreground">Game ID: {order.game_id} • ৳{order.amount} • {order.payment_method}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{new Date(order.created_at).toLocaleString()}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            order.status === "completed" ? "bg-green-500/10 text-green-600" :
-                            order.status === "cancelled" ? "bg-red-500/10 text-red-600" :
-                            order.status === "processing" ? "bg-blue-500/10 text-blue-600" :
-                            "bg-yellow-500/10 text-yellow-600"
-                          }`}>{order.status}</span>
-                          {order.status === "pending" && (
-                            <>
-                              <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "completed" })} className="p-1.5 hover:bg-green-500/10 rounded-lg" title="Complete">
-                                <Check className="w-4 h-4 text-green-600" />
-                              </button>
-                              <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "cancelled" })} className="p-1.5 hover:bg-destructive/10 rounded-lg" title="Cancel">
-                                <XCircle className="w-4 h-4 text-destructive" />
-                              </button>
-                            </>
-                          )}
-                        </div>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border"><h3 className="text-[13px] font-bold text-foreground">All Orders</h3></div>
+              <div className="divide-y divide-border">
+                {orders?.map((order: any) => (
+                  <div key={order.id} className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-foreground">{order.products?.name} — {order.packages?.name}</p>
+                        <p className="text-[10px] text-muted-foreground">Game ID: {order.game_id} · ৳{order.amount} · {order.payment_method}</p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
                       </div>
+                      <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${
+                        order.status === "completed" ? "bg-success/15 text-success" :
+                        order.status === "cancelled" ? "bg-destructive/10 text-destructive" :
+                        order.status === "processing" ? "bg-primary/10 text-primary" :
+                        "bg-notice/20 text-notice-foreground"
+                      }`}>{order.status}</span>
+                      {order.status === "pending" && (
+                        <div className="flex gap-1">
+                          <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "completed" })} className="p-1.5 active:bg-success/10 rounded-lg"><Check className="w-4 h-4 text-success" /></button>
+                          <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "cancelled" })} className="p-1.5 active:bg-destructive/10 rounded-lg"><XCircle className="w-4 h-4 text-destructive" /></button>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {!orders?.length && <div className="p-8 text-center text-muted-foreground text-sm">No orders yet</div>}
+                  </div>
+                ))}
+                {!orders?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No orders</div>}
+              </div>
+            </div>
+          )}
+
+          {/* USERS */}
+          {activeTab === "users" && (
+            <div className="space-y-3">
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-border">
+                  <h3 className="text-[13px] font-bold text-foreground">All Users ({wallets?.length || 0})</h3>
+                </div>
+                <div className="divide-y divide-border">
+                  {wallets?.map((w: any) => {
+                    const role = userRoles?.find((r: any) => r.user_id === w.user_id);
+                    return (
+                      <div key={w.id} className="px-4 py-2.5 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[11px] font-bold shrink-0">U</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-medium text-foreground truncate">{w.user_id}</p>
+                          <p className="text-[10px] text-muted-foreground">Balance: ৳{w.balance}</p>
+                        </div>
+                        {role && <span className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold">{role.role}</span>}
+                      </div>
+                    );
+                  })}
+                  {!wallets?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No users</div>}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* BANNERS */}
+          {activeTab === "banners" && (
+            <div className="space-y-3">
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> {editingBanner ? "Edit Banner" : "Add Banner"}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Title</label><Input value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)} className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Image URL</label><Input value={bannerImageUrl} onChange={(e) => setBannerImageUrl(e.target.value)} className="h-9 text-[13px]" placeholder="https://..." /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Link URL</label><Input value={bannerLinkUrl} onChange={(e) => setBannerLinkUrl(e.target.value)} className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort Order</label><Input type="number" value={bannerSortOrder} onChange={(e) => setBannerSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <Button onClick={() => saveBanner.mutate()} disabled={!bannerImageUrl} size="sm">{editingBanner ? "Update" : "Add"}</Button>
+                  {editingBanner && <Button variant="outline" size="sm" onClick={resetBannerForm}>Cancel</Button>}
+                </div>
+              </div>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-border"><h3 className="text-[13px] font-bold text-foreground">All Banners</h3></div>
+                <div className="divide-y divide-border">
+                  {banners?.map((b: any) => (
+                    <div key={b.id} className="px-4 py-2.5 flex items-center gap-3">
+                      <img src={b.image_url} alt={b.title} className="w-16 h-10 rounded-lg object-cover bg-muted" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-foreground truncate">{b.title || "Untitled"}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{b.image_url}</p>
+                      </div>
+                      <Switch checked={b.is_active} onCheckedChange={(v) => toggleBanner.mutate({ id: b.id, is_active: v })} />
+                      <button onClick={() => startEditBanner(b)} className="p-1.5 active:bg-secondary rounded-lg"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                      <button onClick={() => deleteBanner.mutate(b.id)} className="p-1.5 active:bg-destructive/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                    </div>
+                  ))}
+                  {!banners?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No banners</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SETTINGS */}
+          {activeTab === "settings" && (
+            <div className="space-y-3">
+              {/* General Settings */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Bell className="w-4 h-4" /> General Settings
+                </h3>
+                <div className="space-y-3">
+                  {settingsFields.filter(f => f.type !== "color" && f.type !== "toggle").map((field) => (
+                    <div key={field.key}>
+                      <label className="text-[11px] text-muted-foreground mb-0.5 block">{field.label}</label>
+                      {field.type === "textarea" ? (
+                        <Textarea
+                          value={settingsForm[field.key] || ""}
+                          onChange={(e) => setSettingsForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                          className="text-[13px] min-h-[60px]"
+                        />
+                      ) : (
+                        <Input
+                          value={settingsForm[field.key] || ""}
+                          onChange={(e) => setSettingsForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                          className="h-9 text-[13px]"
+                        />
+                      )}
+                    </div>
+                  ))}
+                  {/* Toggle fields */}
+                  {settingsFields.filter(f => f.type === "toggle").map((field) => (
+                    <div key={field.key} className="flex items-center justify-between py-1">
+                      <label className="text-[12px] font-medium text-foreground">{field.label}</label>
+                      <Switch
+                        checked={settingsForm[field.key] === "true"}
+                        onCheckedChange={(v) => setSettingsForm(prev => ({ ...prev, [field.key]: String(v) }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Theme Colors */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Palette className="w-4 h-4" /> Theme Colors
+                </h3>
+                {settingsFields.filter(f => f.type === "color").map((field) => (
+                  <div key={field.key} className="mb-3">
+                    <label className="text-[11px] text-muted-foreground mb-1 block">{field.label}</label>
+                    <Input
+                      value={settingsForm[field.key] || ""}
+                      onChange={(e) => setSettingsForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      className="h-9 text-[13px] mb-1.5"
+                    />
+                    <div className="flex gap-1.5 flex-wrap">
+                      {colorPresets.map((c) => (
+                        <button
+                          key={c.value}
+                          onClick={() => setSettingsForm(prev => ({ ...prev, [field.key]: c.value }))}
+                          className={`h-7 px-2.5 rounded-md text-[10px] font-semibold border active:opacity-75 ${
+                            settingsForm[field.key] === c.value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                          }`}
+                        >
+                          <span className="inline-block w-2.5 h-2.5 rounded-full mr-1" style={{ background: `hsl(${c.value})` }} />
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Save button */}
+              <Button onClick={() => saveSettings.mutate()} className="w-full" disabled={saveSettings.isPending}>
+                <Save className="w-4 h-4 mr-2" />
+                {saveSettings.isPending ? "Saving..." : "Save All Settings"}
+              </Button>
             </div>
           )}
         </div>

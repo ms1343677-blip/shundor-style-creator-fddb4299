@@ -4,11 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isReady, signOut } = useAuth();
+  const { settings } = useSiteSettings();
+  const siteName = settings.site_name || "RG BAZZER";
 
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
@@ -41,8 +44,8 @@ const Header = () => {
       <header className="sticky top-0 z-40 bg-nav">
         <div className="flex items-center justify-between px-4 h-[52px] max-w-lg mx-auto">
           <h1 className="text-[17px] font-black tracking-tight cursor-pointer select-none" onClick={() => navigate("/")}>
-            <span className="text-destructive">RG</span>
-            <span className="text-nav-foreground"> BAZZER</span>
+            <span className="text-destructive">{siteName.split(" ")[0]}</span>
+            <span className="text-nav-foreground"> {siteName.split(" ").slice(1).join(" ")}</span>
           </h1>
           <div className="flex items-center gap-2">
             {isReady && user ? (
