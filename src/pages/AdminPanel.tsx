@@ -102,7 +102,7 @@ const AdminPanel = () => {
     enabled: !!user,
   });
 
-
+  const { data: orders, refetch: refetchOrders } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
       const { data, error } = await supabase
