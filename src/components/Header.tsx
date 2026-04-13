@@ -25,7 +25,7 @@ const Header = () => {
     { label: "My Account", path: "/profile", icon: "👤" },
     { label: "My Orders", path: "/orders", icon: "📦" },
     { label: "My Codes", path: "/codes", icon: "🔑" },
-    { label: "Transaction History", path: "/orders", icon: "📊" },
+    { label: "Transactions", path: "/orders", icon: "📊" },
     { label: "Add Money", path: "/add-money", icon: "💳" },
     { label: "Contact Us", path: "/", icon: "📞" },
   ];
@@ -38,12 +38,9 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-nav border-b border-border/10">
-        <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
-          <h1
-            className="text-lg font-extrabold tracking-tight cursor-pointer select-none"
-            onClick={() => navigate("/")}
-          >
+      <header className="sticky top-0 z-40 bg-nav">
+        <div className="flex items-center justify-between px-4 h-[52px] max-w-lg mx-auto">
+          <h1 className="text-[17px] font-black tracking-tight cursor-pointer select-none" onClick={() => navigate("/")}>
             <span className="text-destructive">RG</span>
             <span className="text-nav-foreground"> BAZZER</span>
           </h1>
@@ -52,22 +49,22 @@ const Header = () => {
               <>
                 <button
                   onClick={() => navigate("/add-money")}
-                  className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3.5 py-1.5 rounded-lg text-sm font-semibold active:scale-95"
+                  className="flex items-center gap-1.5 bg-primary text-primary-foreground h-8 px-3 rounded-lg text-[13px] font-bold active:opacity-80"
                 >
-                  <Wallet className="w-4 h-4" />
+                  <Wallet className="w-3.5 h-3.5" />
                   {wallet?.balance?.toFixed(0) || "0"}৳
                 </button>
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
-                  className="w-9 h-9 rounded-lg bg-nav-foreground/10 flex items-center justify-center active:scale-95"
+                  className="w-8 h-8 rounded-lg bg-nav-foreground/10 flex items-center justify-center active:opacity-80"
                 >
-                  {menuOpen ? <X className="w-5 h-5 text-nav-foreground" /> : <Menu className="w-5 h-5 text-nav-foreground" />}
+                  {menuOpen ? <X className="w-[18px] h-[18px] text-nav-foreground" /> : <Menu className="w-[18px] h-[18px] text-nav-foreground" />}
                 </button>
               </>
             ) : (
               <button
                 onClick={() => navigate("/login")}
-                className="bg-primary text-primary-foreground px-5 py-1.5 rounded-lg text-sm font-semibold active:scale-95"
+                className="bg-primary text-primary-foreground h-8 px-4 rounded-lg text-[13px] font-bold active:opacity-80"
               >
                 Login
               </button>
@@ -77,39 +74,39 @@ const Header = () => {
       </header>
 
       {menuOpen && user && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
-          <div className="ml-auto relative bg-card w-72 h-full shadow-2xl overflow-y-auto">
-            <div className="p-5 bg-nav">
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-foreground/50" onClick={() => setMenuOpen(false)} />
+          <div className="absolute right-0 top-0 bottom-0 bg-card w-[280px] shadow-2xl flex flex-col">
+            <div className="p-4 bg-nav">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-base">
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
                   {user.email?.charAt(0).toUpperCase() || "U"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-nav-foreground text-sm truncate">
+                  <p className="font-bold text-nav-foreground text-sm truncate">
                     {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
                   </p>
-                  <p className="text-xs text-nav-foreground/60 truncate">{user.email}</p>
+                  <p className="text-[11px] text-nav-foreground/50 truncate">{user.email}</p>
                 </div>
               </div>
             </div>
-            <div className="py-1">
+            <div className="flex-1 overflow-y-auto">
               {menuItems.map((item) => (
                 <button
                   key={item.label}
                   onClick={() => { navigate(item.path); setMenuOpen(false); }}
-                  className="w-full text-left px-5 py-3 text-foreground active:bg-muted flex items-center gap-3 text-sm"
+                  className="w-full text-left px-4 py-3.5 text-foreground active:bg-secondary flex items-center gap-3 text-[13px] border-b border-border"
                 >
-                  <span className="text-base">{item.icon}</span>
-                  <span className="flex-1">{item.label}</span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <span>{item.icon}</span>
+                  <span className="flex-1 font-medium">{item.label}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
                 </button>
               ))}
             </div>
-            <div className="px-5 py-4 border-t border-border">
+            <div className="p-4 border-t border-border">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 bg-destructive/10 text-destructive py-2.5 rounded-lg text-sm font-semibold active:scale-95"
+                className="w-full flex items-center justify-center gap-2 border border-destructive text-destructive h-10 rounded-lg text-[13px] font-bold active:opacity-80"
               >
                 <LogOut className="w-4 h-4" />
                 Logout
