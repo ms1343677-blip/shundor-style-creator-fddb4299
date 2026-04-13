@@ -857,6 +857,8 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
   const [addTrxId, setAddTrxId] = useState("");
   const [addAmount, setAddAmount] = useState("");
   const [addingMsg, setAddingMsg] = useState(false);
+  const [filterSender, setFilterSender] = useState<string>("All");
+  const [filterStatus, setFilterStatus] = useState<string>("All");
 
   const { data: webhooks, refetch: refetchWebhooks } = useQuery({
     queryKey: ["admin-sms-webhooks"],
