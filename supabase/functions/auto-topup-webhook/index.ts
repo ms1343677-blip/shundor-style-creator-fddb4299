@@ -14,6 +14,8 @@ const jsonResponse = (body: Record<string, unknown>, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const okResponse = (body: Record<string, unknown>) => jsonResponse(body, 200);
+
 // Check if error message indicates invalid UID/region
 const isInvalidUidError = (msg: string): boolean => {
   const lower = msg.toLowerCase();

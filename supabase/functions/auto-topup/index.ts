@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     
     // Build payload matching the external API's expected format
     const variationName = pkg.product_variation_name || pkg.name;
-    const webhookBaseUrl = `${SUPABASE_URL}/functions/v1/auto-topup-webhook`;
+    const callbackUrl = `${SUPABASE_URL}/functions/v1/api/automation/webhook`;
     const payload: Record<string, string> = {
       api_key: autoApi.api_key,
       order_id: order.id,
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       uid: fields.uid || fields.game_id || order.game_id,
       status: "Processing",
       order_time: new Date().toISOString(),
-      callback_url: `${webhookBaseUrl}/humayun`,
+      callback_url: callbackUrl,
     };
 
     console.log("Auto topup request:", { url: `${apiUrl}/webhook/website/order`, payload: { ...payload, api_key: "***" } });
