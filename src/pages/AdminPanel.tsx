@@ -9,11 +9,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X,
-  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye
+  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye, Wallet, RotateCcw
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms";
+type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -317,6 +317,7 @@ const AdminPanel = () => {
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
     { id: "webhook-sms", label: "Webhook SMS", icon: MessageSquare },
+    { id: "payment", label: "Payment", icon: Wallet },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -759,6 +760,9 @@ const AdminPanel = () => {
           {/* WEBHOOK SMS */}
           {activeTab === "webhook-sms" && <WebhookSmsTab user={user} />}
 
+          {/* PAYMENT */}
+          {activeTab === "payment" && <PaymentTab user={user} />}
+
           {/* SETTINGS */}
           {activeTab === "settings" && (
             <div className="space-y-3">
@@ -843,6 +847,11 @@ const AdminPanel = () => {
 const WebhookSmsTab = ({ user }: { user: any }) => {
   const queryClient = useQueryClient();
   const [viewMessage, setViewMessage] = useState<any>(null);
+  const [editingMsg, setEditingMsg] = useState<any>(null);
+  const [editSender, setEditSender] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editTrxId, setEditTrxId] = useState("");
+  const [editAmount, setEditAmount] = useState("");
   const [addSender, setAddSender] = useState("bKash");
   const [addPhone, setAddPhone] = useState("");
   const [addTrxId, setAddTrxId] = useState("");
@@ -914,6 +923,42 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
     toast({ title: "URL কপি হয়েছে!" });
   };
 
+  const deleteMessage = async (id: string) => {
+    const { error } = await supabase.from("sms_messages").delete().eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    refetchMessages();
+    toast({ title: "মেসেজ ডিলিট হয়েছে!" });
+  };
+
+  const deleteAllMessages = async () => {
+    const { error } = await supabase.from("sms_messages").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    refetchMessages();
+    toast({ title: "সব মেসেজ ডিলিট হয়েছে!" });
+  };
+
+  const startEditMsg = (msg: any) => {
+    setEditingMsg(msg);
+    setEditSender(msg.sender);
+    setEditPhone(msg.phone_number || "");
+    setEditTrxId(msg.transaction_id || "");
+    setEditAmount(String(msg.amount || 0));
+  };
+
+  const saveEditMsg = async () => {
+    if (!editingMsg) return;
+    const { error } = await supabase.from("sms_messages").update({
+      sender: editSender,
+      phone_number: editPhone,
+      transaction_id: editTrxId,
+      amount: parseFloat(editAmount) || 0,
+    }).eq("id", editingMsg.id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setEditingMsg(null);
+    refetchMessages();
+    toast({ title: "মেসেজ আপডেট হয়েছে!" });
+  };
+
   return (
     <div className="space-y-3">
       {/* Webhook URLs */}
@@ -928,7 +973,7 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
           {webhooks?.map((wh: any) => (
             <div key={wh.id} className="bg-secondary rounded-lg p-3 space-y-2">
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${wh.is_active ? "bg-green-500" : "bg-red-500"}`} />
+                <div className={`w-2 h-2 rounded-full ${wh.is_active ? "bg-primary" : "bg-destructive"}`} />
                 <span className="text-[11px] text-muted-foreground flex-1 font-mono truncate">{getWebhookUrl(wh.token)}</span>
               </div>
               <div className="flex gap-1.5">
@@ -955,73 +1000,67 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
           <Plus className="w-4 h-4" /> Add Store Message
         </h3>
         <div className="grid grid-cols-2 gap-2 mb-2">
-          <select
-            value={addSender}
-            onChange={(e) => setAddSender(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-[12px]"
-          >
+          <select value={addSender} onChange={(e) => setAddSender(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-[12px]">
             <option value="bKash">bKash</option>
             <option value="Nagad">Nagad</option>
             <option value="Rocket">Rocket</option>
           </select>
-          <Input
-            placeholder="Phone (01XXXXXXXXX)"
-            value={addPhone}
-            onChange={(e) => setAddPhone(e.target.value)}
-            className="h-9 text-[12px]"
-          />
-          <Input
-            placeholder="Transaction ID"
-            value={addTrxId}
-            onChange={(e) => setAddTrxId(e.target.value)}
-            className="h-9 text-[12px]"
-          />
-          <Input
-            placeholder="Amount (৳)"
-            type="number"
-            value={addAmount}
-            onChange={(e) => setAddAmount(e.target.value)}
-            className="h-9 text-[12px]"
-          />
+          <Input placeholder="Phone (01XXXXXXXXX)" value={addPhone} onChange={(e) => setAddPhone(e.target.value)} className="h-9 text-[12px]" />
+          <Input placeholder="Transaction ID" value={addTrxId} onChange={(e) => setAddTrxId(e.target.value)} className="h-9 text-[12px]" />
+          <Input placeholder="Amount (৳)" type="number" value={addAmount} onChange={(e) => setAddAmount(e.target.value)} className="h-9 text-[12px]" />
         </div>
-        <Button
-          size="sm"
-          className="w-full"
-          disabled={addingMsg || !addTrxId || !addAmount}
+        <Button size="sm" className="w-full" disabled={addingMsg || !addTrxId || !addAmount}
           onClick={async () => {
             setAddingMsg(true);
             try {
               const webhookId = webhooks?.[0]?.id;
               if (!webhookId) { toast({ title: "Error", description: "প্রথমে একটি Webhook তৈরি করুন", variant: "destructive" }); return; }
               const rawMessage = `${addSender} payment received. Tk ${addAmount} from ${addPhone || "N/A"}. TrxID ${addTrxId}`;
-              const { error } = await supabase.from("sms_messages").insert({
-                webhook_id: webhookId,
-                sender: addSender,
-                phone_number: addPhone,
-                transaction_id: addTrxId,
-                amount: parseFloat(addAmount),
-                raw_message: rawMessage,
-              });
+              const { error } = await supabase.from("sms_messages").insert({ webhook_id: webhookId, sender: addSender, phone_number: addPhone, transaction_id: addTrxId, amount: parseFloat(addAmount), raw_message: rawMessage });
               if (error) throw error;
               toast({ title: "Store Message যোগ হয়েছে!" });
               setAddPhone(""); setAddTrxId(""); setAddAmount("");
               refetchMessages();
-            } catch (e: any) {
-              toast({ title: "Error", description: e.message, variant: "destructive" });
-            } finally {
-              setAddingMsg(false);
-            }
-          }}
-        >
+            } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
+            finally { setAddingMsg(false); }
+          }}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Add Message
         </Button>
       </div>
+
+      {/* Edit Message Modal */}
+      {editingMsg && (
+        <div className="bg-card rounded-xl border-2 border-primary p-4 space-y-2">
+          <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2"><Pencil className="w-4 h-4" /> Edit Message</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={editSender} onChange={(e) => setEditSender(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-[12px]">
+              <option value="bKash">bKash</option>
+              <option value="Nagad">Nagad</option>
+              <option value="Rocket">Rocket</option>
+            </select>
+            <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone" className="h-9 text-[12px]" />
+            <Input value={editTrxId} onChange={(e) => setEditTrxId(e.target.value)} placeholder="TrxID" className="h-9 text-[12px]" />
+            <Input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} type="number" placeholder="Amount" className="h-9 text-[12px]" />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveEditMsg}>Save</Button>
+            <Button size="sm" variant="outline" onClick={() => setEditingMsg(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
 
       {/* SMS Messages */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
           <h3 className="text-[13px] font-bold text-foreground">Store Messages ({smsMessages?.length || 0})</h3>
-          <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          <div className="flex gap-1.5">
+            <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+            {(smsMessages?.length || 0) > 0 && (
+              <button onClick={deleteAllMessages} className="h-7 px-2 rounded-md text-[10px] font-semibold border border-destructive/30 text-destructive active:opacity-75 flex items-center gap-1">
+                <Trash2 className="w-3 h-3" /> Delete All
+              </button>
+            )}
+          </div>
         </div>
         <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
           {smsMessages?.map((msg: any) => (
@@ -1032,37 +1071,186 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
                   msg.sender === "Nagad" ? "bg-[#F6921E]/10 text-[#F6921E]" :
                   "bg-muted text-muted-foreground"
                 }`}>{msg.sender || "Unknown"}</span>
-                {msg.is_used && <span className="text-[10px] px-2 py-0.5 rounded bg-green-500/10 text-green-600 font-bold">Used</span>}
+                {msg.is_used && <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">Used</span>}
                 <span className="text-[10px] text-muted-foreground ml-auto">{new Date(msg.created_at).toLocaleString()}</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-[11px] mb-1">
-                <div>
-                  <span className="text-muted-foreground">Phone: </span>
-                  <span className="font-semibold text-foreground">{msg.phone_number || "—"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">TrxID: </span>
-                  <span className="font-semibold text-foreground font-mono">{msg.transaction_id || "—"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Amount: </span>
-                  <span className="font-bold text-primary">৳{msg.amount || 0}</span>
-                </div>
+                <div><span className="text-muted-foreground">Phone: </span><span className="font-semibold text-foreground">{msg.phone_number || "—"}</span></div>
+                <div><span className="text-muted-foreground">TrxID: </span><span className="font-semibold text-foreground font-mono">{msg.transaction_id || "—"}</span></div>
+                <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-primary">৳{msg.amount || 0}</span></div>
               </div>
-              <button
-                onClick={() => setViewMessage(viewMessage?.id === msg.id ? null : msg)}
-                className="text-[10px] text-primary flex items-center gap-1"
-              >
-                <Eye className="w-3 h-3" /> {viewMessage?.id === msg.id ? "Hide" : "View"} Full Message
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setViewMessage(viewMessage?.id === msg.id ? null : msg)} className="text-[10px] text-primary flex items-center gap-1">
+                  <Eye className="w-3 h-3" /> {viewMessage?.id === msg.id ? "Hide" : "View"}
+                </button>
+                <button onClick={() => startEditMsg(msg)} className="text-[10px] text-muted-foreground flex items-center gap-1 active:opacity-75">
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
+                <button onClick={() => deleteMessage(msg.id)} className="text-[10px] text-destructive flex items-center gap-1 active:opacity-75">
+                  <Trash2 className="w-3 h-3" /> Delete
+                </button>
+              </div>
               {viewMessage?.id === msg.id && (
-                <div className="mt-2 bg-secondary rounded-lg p-2 text-[11px] text-foreground whitespace-pre-wrap break-all">
-                  {msg.raw_message}
-                </div>
+                <div className="mt-2 bg-secondary rounded-lg p-2 text-[11px] text-foreground whitespace-pre-wrap break-all">{msg.raw_message}</div>
               )}
             </div>
           ))}
           {!smsMessages?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No messages received yet</div>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Payment Tab Component
+const PaymentTab = ({ user }: { user: any }) => {
+  const queryClient = useQueryClient();
+
+  const { data: siteSettings } = useQuery({
+    queryKey: ["admin-site-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("site_settings").select("*").order("key");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: balanceData, refetch: refetchBalance } = useQuery({
+    queryKey: ["admin-balance-tracker"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("balance_tracker").select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: smsMessages } = useQuery({
+    queryKey: ["admin-sms-messages"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sms_messages").select("*").order("created_at", { ascending: false }).limit(500);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: paymentHistory, refetch: refetchHistory } = useQuery({
+    queryKey: ["admin-payment-history"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("payment_history").select("*").order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const [bkashNum, setBkashNum] = useState("");
+  const [nagadNum, setNagadNum] = useState("");
+
+  useEffect(() => {
+    if (siteSettings) {
+      const bk = siteSettings.find((s: any) => s.key === "bkash_number");
+      const ng = siteSettings.find((s: any) => s.key === "nagad_number");
+      setBkashNum(bk?.value || "");
+      setNagadNum(ng?.value || "");
+    }
+  }, [siteSettings]);
+
+  const savePaymentNumbers = async () => {
+    await supabase.from("site_settings").update({ value: bkashNum }).eq("key", "bkash_number");
+    await supabase.from("site_settings").update({ value: nagadNum }).eq("key", "nagad_number");
+    queryClient.invalidateQueries({ queryKey: ["admin-site-settings"] });
+    queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+    toast({ title: "পেমেন্ট নাম্বার সেভ হয়েছে!" });
+  };
+
+  // Calculate balance from SMS since last reset
+  const bkashTracker = balanceData?.find((b: any) => b.provider === "bKash");
+  const nagadTracker = balanceData?.find((b: any) => b.provider === "Nagad");
+
+  const bkashBalance = smsMessages
+    ?.filter((m: any) => m.sender === "bKash" && new Date(m.created_at) >= new Date(bkashTracker?.reset_at || 0))
+    .reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0;
+
+  const nagadBalance = smsMessages
+    ?.filter((m: any) => m.sender === "Nagad" && new Date(m.created_at) >= new Date(nagadTracker?.reset_at || 0))
+    .reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0;
+
+  const resetBalance = async (provider: string) => {
+    const { error } = await supabase.from("balance_tracker").update({ reset_at: new Date().toISOString(), total_received: 0 }).eq("provider", provider);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    refetchBalance();
+    toast({ title: `${provider} ব্যালেন্স রিসেট হয়েছে!` });
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Payment Numbers */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2 mb-3">
+          <Wallet className="w-4 h-4" /> পেমেন্ট নাম্বার
+        </h3>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-16 text-[11px] font-bold text-[#E2136E]">bKash</div>
+            <Input value={bkashNum} onChange={(e) => setBkashNum(e.target.value)} placeholder="01XXXXXXXXX" className="h-9 text-[13px] flex-1" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-16 text-[11px] font-bold text-[#F6921E]">Nagad</div>
+            <Input value={nagadNum} onChange={(e) => setNagadNum(e.target.value)} placeholder="01XXXXXXXXX" className="h-9 text-[13px] flex-1" />
+          </div>
+          <Button size="sm" onClick={savePaymentNumbers} className="w-full"><Save className="w-3.5 h-3.5 mr-1" /> Save Numbers</Button>
+        </div>
+      </div>
+
+      {/* Balance Tracker */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-[#E2136E]">bKash Balance</span>
+            <button onClick={() => resetBalance("bKash")} className="p-1 active:opacity-75" title="Reset"><RotateCcw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          </div>
+          <p className="text-2xl font-black text-foreground">৳{bkashBalance.toLocaleString()}</p>
+          <p className="text-[9px] text-muted-foreground mt-1">Reset: {bkashTracker ? new Date(bkashTracker.reset_at).toLocaleString() : "—"}</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-[#F6921E]">Nagad Balance</span>
+            <button onClick={() => resetBalance("Nagad")} className="p-1 active:opacity-75" title="Reset"><RotateCcw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          </div>
+          <p className="text-2xl font-black text-foreground">৳{nagadBalance.toLocaleString()}</p>
+          <p className="text-[9px] text-muted-foreground mt-1">Reset: {nagadTracker ? new Date(nagadTracker.reset_at).toLocaleString() : "—"}</p>
+        </div>
+      </div>
+
+      {/* Payment History (Used SMS) */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
+          <h3 className="text-[13px] font-bold text-foreground">Payment History ({paymentHistory?.length || 0})</h3>
+          <button onClick={() => refetchHistory()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+        </div>
+        <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
+          {paymentHistory?.map((ph: any) => (
+            <div key={ph.id} className="px-4 py-2.5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                  ph.sender === "bKash" ? "bg-[#E2136E]/10 text-[#E2136E]" :
+                  ph.sender === "Nagad" ? "bg-[#F6921E]/10 text-[#F6921E]" :
+                  "bg-muted text-muted-foreground"
+                }`}>{ph.sender}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">{ph.payment_type}</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{new Date(ph.created_at).toLocaleString()}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-[11px]">
+                <div><span className="text-muted-foreground">Phone: </span><span className="font-semibold text-foreground">{ph.phone_number || "—"}</span></div>
+                <div><span className="text-muted-foreground">TrxID: </span><span className="font-semibold text-foreground font-mono">{ph.transaction_id || "—"}</span></div>
+                <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-primary">৳{ph.amount || 0}</span></div>
+              </div>
+            </div>
+          ))}
+          {!paymentHistory?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No payment history yet</div>}
         </div>
       </div>
     </div>

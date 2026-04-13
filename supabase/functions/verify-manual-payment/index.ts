@@ -86,6 +86,18 @@ Deno.serve(async (req) => {
       // Mark SMS used
       await supabaseAdmin.from("sms_messages").update({ is_used: true, used_for_order_id: null }).eq("id", smsMatch.id);
 
+      // Save to payment_history
+      await supabaseAdmin.from("payment_history").insert({
+        sender: smsMatch.sender,
+        phone_number: smsMatch.phone_number,
+        transaction_id,
+        amount: reqAmount,
+        sms_message_id: smsMatch.id,
+        user_id: userId,
+        payment_type: "add_money",
+        raw_message: smsMatch.raw_message,
+      });
+
       return new Response(JSON.stringify({ status: "completed", message: "Wallet topped up successfully!" }), { status: 200, headers });
     } else {
       // Create order
@@ -119,6 +131,19 @@ Deno.serve(async (req) => {
 
       // Mark SMS used
       await supabaseAdmin.from("sms_messages").update({ is_used: true, used_for_order_id: order?.id }).eq("id", smsMatch.id);
+
+      // Save to payment_history
+      await supabaseAdmin.from("payment_history").insert({
+        sender: smsMatch.sender,
+        phone_number: smsMatch.phone_number,
+        transaction_id,
+        amount: reqAmount,
+        sms_message_id: smsMatch.id,
+        order_id: order?.id,
+        user_id: userId,
+        payment_type: "payment",
+        raw_message: smsMatch.raw_message,
+      });
 
       return new Response(JSON.stringify({ status: "completed", message: "Order placed successfully!" }), { status: 200, headers });
     }
