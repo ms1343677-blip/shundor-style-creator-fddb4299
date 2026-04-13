@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     
     // Build payload matching the external API's expected format
     const variationName = pkg.product_variation_name || pkg.name;
-    const callbackUrl = `${SUPABASE_URL}/functions/v1/api/automation/webhook`;
+    const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=automation`;
     const payload: Record<string, string> = {
       api_key: autoApi.api_key,
       order_id: order.id,

@@ -12,24 +12,6 @@ const jsonResponse = (body: Record<string, unknown>, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const getTargetPath = (pathname: string) => {
-  const normalized = pathname.toLowerCase();
-
-  if (normalized.endsWith("/automation/webhook")) {
-    return "/auto-topup-webhook/automation";
-  }
-
-  if (normalized.endsWith("/humayun/webhook")) {
-    return "/auto-topup-webhook/humayun";
-  }
-
-  if (normalized.endsWith("/auto-topup/webhook")) {
-    return "/auto-topup-webhook";
-  }
-
-  return null;
-};
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -37,17 +19,8 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const targetPath = getTargetPath(url.pathname);
-
-    if (!targetPath) {
-      return jsonResponse({
-        error: "Unknown API route",
-        available_routes: ["/automation/webhook", "/humayun/webhook", "/auto-topup/webhook"],
-      }, 404);
-    }
-
     const bodyText = req.method === "GET" || req.method === "HEAD" ? undefined : await req.text();
-    const targetUrl = `${SUPABASE_URL}/functions/v1${targetPath}${url.search}`;
+    const targetUrl = `${SUPABASE_URL}/functions/v1/auto-topup-webhook${url.search}`;
 
     console.log("API alias forwarding request:", { from: url.pathname, to: targetUrl });
 
@@ -77,6 +50,6 @@ Deno.serve(async (req) => {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("API alias error:", message);
-    return jsonResponse({ error: message }, 500);
+    return jsonResponse({ ok: false, error: message }, 200);
   }
 });
