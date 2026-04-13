@@ -279,6 +279,7 @@ const AdminPanel = () => {
     { key: "telegram_link", label: "Telegram Link", type: "text" },
     { key: "facebook_link", label: "Facebook Link", type: "text" },
     { key: "support_hours", label: "Support Hours", type: "text" },
+    { key: "background_color", label: "Background Color (HSL)", type: "color" },
     { key: "primary_color", label: "Primary Color (HSL)", type: "color" },
     { key: "notice_color", label: "Notice Color (HSL)", type: "color" },
     { key: "nav_color", label: "Header Color (HSL)", type: "color" },
@@ -286,13 +287,14 @@ const AdminPanel = () => {
   ];
 
   const colorPresets = [
-    { label: "Green", value: "152 60% 30%" },
+    { label: "White", value: "0 0% 100%" },
+    { label: "Light", value: "0 0% 95%" },
+    { label: "Green", value: "145 63% 32%" },
     { label: "Blue", value: "220 70% 50%" },
     { label: "Purple", value: "270 60% 50%" },
     { label: "Red", value: "0 70% 50%" },
     { label: "Orange", value: "25 90% 50%" },
     { label: "Teal", value: "180 60% 35%" },
-    { label: "Pink", value: "330 70% 50%" },
     { label: "Dark", value: "220 30% 15%" },
   ];
 
