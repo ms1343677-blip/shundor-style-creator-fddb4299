@@ -9,13 +9,15 @@ import { RefreshCw, Info, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
 
+type CustomField = { key: string; label: string; placeholder: string };
+
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "instant">("wallet");
-  const [gameId, setGameId] = useState("");
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const { data: product } = useQuery({
@@ -56,11 +58,33 @@ const ProductDetail = () => {
 
   const selectedPkg = packages?.find((p) => p.id === selectedPackage);
 
+  // Parse custom fields from product
+  const customFields: CustomField[] = (() => {
+    if (!product?.custom_fields) return [{ key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি" }];
+    try {
+      const parsed = typeof product.custom_fields === 'string' ? JSON.parse(product.custom_fields) : product.custom_fields;
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : [{ key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি" }];
+    } catch {
+      return [{ key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি" }];
+    }
+  })();
+
+  const getGameIdValue = () => {
+    // If single field, return value directly. If multiple, return JSON
+    if (customFields.length === 1) {
+      return fieldValues[customFields[0].key] || "";
+    }
+    return JSON.stringify(fieldValues);
+  };
+
+  const allFieldsFilled = customFields.every(f => (fieldValues[f.key] || "").trim() !== "");
+
   const handleBuyNow = async () => {
     if (!user) { navigate("/login"); return; }
     if (!selectedPackage || !selectedPkg) { toast({ title: "প্যাকেজ সিলেক্ট করুন", variant: "destructive" }); return; }
-    if (!gameId.trim()) { toast({ title: "গেম আইডি দিন", variant: "destructive" }); return; }
+    if (!allFieldsFilled) { toast({ title: "সকল ফিল্ড পূরণ করুন", variant: "destructive" }); return; }
 
+    const gameIdValue = getGameIdValue();
     setLoading(true);
     try {
       if (paymentMethod === "wallet") {
@@ -70,20 +94,36 @@ const ProductDetail = () => {
           return;
         }
         const { data, error } = await supabase.functions.invoke("wallet-order", {
-          body: { product_id: id, package_id: selectedPackage, game_id: gameId },
+          body: { product_id: id, package_id: selectedPackage, game_id: gameIdValue },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        toast({ title: "অর্ডার সফল! ✅" });
+
+        // If auto topup is enabled, trigger it
+        if (selectedPkg.auto_topup_enabled && data?.order?.id) {
+          try {
+            const { data: topupResult } = await supabase.functions.invoke("auto-topup", {
+              body: { order_id: data.order.id },
+            });
+            if (topupResult?.success) {
+              toast({ title: "অর্ডার সফল! ⚡ Auto Topup Processing..." });
+            } else {
+              toast({ title: "অর্ডার সফল! ✅", description: "Admin প্রক্রিয়া করবে।" });
+            }
+          } catch {
+            toast({ title: "অর্ডার সফল! ✅" });
+          }
+        } else {
+          toast({ title: "অর্ডার সফল! ✅" });
+        }
         refetchWallet();
         navigate("/orders");
       } else {
-        // Navigate to manual payment page
         const params = new URLSearchParams({
           amount: String(selectedPkg.price),
           product_id: id!,
           package_id: selectedPackage,
-          game_id: gameId,
+          game_id: gameIdValue,
           type: "payment",
         });
         navigate(`/manual-payment?${params.toString()}`);
@@ -135,24 +175,32 @@ const ProductDetail = () => {
                     {sel && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
                   </div>
                   <span className="text-[13px] font-bold text-primary">{pkg.price}৳</span>
+                  {pkg.auto_topup_enabled && <span className="text-[9px] text-primary ml-1">⚡</span>}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Step 2 */}
+        {/* Step 2 - Dynamic Fields */}
         <div className="bg-card rounded-xl border border-border p-3">
           <div className="flex items-center gap-2 mb-2.5">
             <span className="w-5 h-5 rounded bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-bold">2</span>
-            <h2 className="text-[13px] font-bold text-foreground">Game ID</h2>
+            <h2 className="text-[13px] font-bold text-foreground">আপনার তথ্য দিন</h2>
           </div>
-          <Input
-            placeholder="এখানে গেমের আইডি দিন"
-            value={gameId}
-            onChange={(e) => setGameId(e.target.value)}
-            className="text-[13px] h-10"
-          />
+          <div className="space-y-2">
+            {customFields.map((field) => (
+              <div key={field.key}>
+                <label className="text-[11px] text-muted-foreground mb-0.5 block">{field.label}</label>
+                <Input
+                  placeholder={field.placeholder}
+                  value={fieldValues[field.key] || ""}
+                  onChange={(e) => setFieldValues(prev => ({ ...prev, [field.key]: e.target.value }))}
+                  className="text-[13px] h-10"
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Step 3 */}
