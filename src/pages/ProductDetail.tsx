@@ -78,19 +78,16 @@ const ProductDetail = () => {
         refetchWallet();
         navigate("/orders");
       } else {
-        const { data, error } = await supabase.functions.invoke("uddoktapay", {
-          body: {
-            amount: selectedPkg.price,
-            product_id: id,
-            package_id: selectedPackage,
-            game_id: gameId,
-            type: "payment",
-            redirect_url: window.location.origin,
-          },
+        // Navigate to manual payment page
+        const params = new URLSearchParams({
+          amount: String(selectedPkg.price),
+          product_id: id!,
+          package_id: selectedPackage,
+          game_id: gameId,
+          type: "payment",
         });
-        if (error) throw error;
-        if (data?.payment_url) window.location.href = data.payment_url;
-        else throw new Error("Payment URL not received");
+        navigate(`/manual-payment?${params.toString()}`);
+        return;
       }
     } catch (err: any) {
       toast({ title: "ত্রুটি", description: err.message, variant: "destructive" });
