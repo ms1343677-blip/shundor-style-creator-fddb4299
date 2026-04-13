@@ -9,9 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X,
-  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye, Wallet, RotateCcw
+  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye, Wallet, RotateCcw, Zap, Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import AutoApiTab from "@/components/admin/AutoApiTab";
 
 type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment";
 
