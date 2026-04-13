@@ -21,7 +21,6 @@ const LatestOrders = () => {
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
-      // Fetch profile names for each order
       const userIds = [...new Set(data?.map((o: any) => o.user_id) || [])];
       const { data: profiles } = await supabase
         .from("profiles")
@@ -29,11 +28,17 @@ const LatestOrders = () => {
         .in("user_id", userIds);
       const profileMap: Record<string, any> = {};
       profiles?.forEach((p: any) => { profileMap[p.user_id] = p; });
-      return data?.map((o: any) => ({ ...o, profile: profileMap[o.user_id] || null })) || [];
+
+      // Fetch avatars from auth metadata via user_id
+      const enriched = data?.map((o: any) => ({ ...o, profile: profileMap[o.user_id] || null })) || [];
+      return enriched;
     },
     staleTime: 30_000,
   });
 
+  // Fetch all user avatars
+  const userIds = [...new Set(orders?.map((o: any) => o.user_id) || [])];
+  
   const lastUpdated = orders?.[0]?.updated_at
     ? formatDistanceToNow(new Date(orders[0].updated_at), { locale: bn, addSuffix: true })
     : null;
@@ -58,10 +63,30 @@ const LatestOrders = () => {
             const status = statusConfig[order.status] || statusConfig.pending;
             const StatusIcon = status.icon;
 
+            // Generate avatar from email using UI Avatars (works for all users)
+            const email = profile?.email || "";
+            const avatarUrl = email
+              ? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=80&bold=true`
+              : null;
+
             return (
               <div key={order.id} className="bg-background rounded-xl p-3.5 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-black shrink-0">
-                  {initial}
+                <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-primary/15 text-primary flex items-center justify-center text-sm font-black">
+                      {initial}
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-bold text-foreground truncate">{name}</p>
