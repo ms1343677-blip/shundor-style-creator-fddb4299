@@ -38,7 +38,6 @@ const AdminPanel = () => {
   const [pkgAutoTopup, setPkgAutoTopup] = useState(false);
   const [pkgAutoApiId, setPkgAutoApiId] = useState("");
   const [pkgVariationName, setPkgVariationName] = useState("");
-  const [pkgSortOrder, setPkgSortOrder] = useState(0);
 
   // Banner form
   const [bannerTitle, setBannerTitle] = useState("");
