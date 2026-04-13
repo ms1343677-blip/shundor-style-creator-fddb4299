@@ -8,6 +8,8 @@ import { Wallet, ShoppingBag, RefreshCw } from "lucide-react";
 const Profile = () => {
   const { user, isReady } = useAuth();
 
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+
   const { data: wallet, refetch } = useQuery({
     queryKey: ["wallet"],
     queryFn: async () => {
@@ -41,19 +43,25 @@ const Profile = () => {
       <Header />
       <div className="max-w-lg mx-auto px-3 py-4 space-y-3">
         {/* Profile Card */}
-        <div className="bg-nav rounded-xl p-4 text-center">
-          <div className="w-14 h-14 rounded-full bg-primary text-primary-foreground mx-auto mb-2 flex items-center justify-center text-xl font-black">
-            {displayName.charAt(0).toUpperCase()}
+        <div className="bg-primary rounded-2xl p-5 text-center">
+          <div className="w-16 h-16 rounded-full mx-auto mb-2 overflow-hidden border-3 border-primary-foreground/30">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full bg-primary-foreground/20 flex items-center justify-center text-primary-foreground text-xl font-black">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
-          <p className="text-base font-bold text-nav-foreground">{displayName}</p>
-          <p className="text-[11px] text-nav-foreground/50">{user?.email}</p>
+          <p className="text-base font-bold text-primary-foreground">{displayName}</p>
+          <p className="text-[11px] text-primary-foreground/60">{user?.email}</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-primary" />
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="bg-card rounded-2xl border border-border p-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Wallet className="w-4.5 h-4.5 text-primary" />
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground">Balance</p>
@@ -63,9 +71,9 @@ const Profile = () => {
               </p>
             </div>
           </div>
-          <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4 text-primary" />
+          <div className="bg-card rounded-2xl border border-border p-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <ShoppingBag className="w-4.5 h-4.5 text-primary" />
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground">Orders</p>
@@ -75,13 +83,13 @@ const Profile = () => {
         </div>
 
         {/* Account Info */}
-        <div className="bg-card rounded-xl border border-border divide-y divide-border overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
           {[
             { label: "Email", value: user?.email || "-" },
             { label: "Account", value: "Verified ✅" },
             { label: "Support Pin", value: "3984" },
           ].map((row) => (
-            <div key={row.label} className="flex items-center justify-between px-4 py-3">
+            <div key={row.label} className="flex items-center justify-between px-4 py-3.5">
               <span className="text-[12px] text-muted-foreground">{row.label}</span>
               <span className="text-[12px] font-semibold text-foreground">{row.value}</span>
             </div>

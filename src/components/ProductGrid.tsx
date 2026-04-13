@@ -32,21 +32,18 @@ const ProductGrid = () => {
   return (
     <div className="max-w-lg mx-auto">
       {categories.map((cat) => (
-        <section key={cat} className="px-3 pt-4 pb-2">
-          <div className="flex items-center gap-2 mb-3 px-1">
-            <div className="w-1 h-4 bg-primary rounded-full" />
-            <h2 className="text-[15px] font-bold text-foreground">{cat}</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
+        <section key={cat} className="px-3 pt-5 pb-2">
+          <h2 className="text-center text-[17px] font-black text-foreground mb-4">{cat}</h2>
+          <div className="grid grid-cols-3 gap-3">
             {products
               .filter((p) => p.category === cat)
               .map((p) => (
                 <button
                   key={p.id}
                   onClick={() => navigate(`/product/${p.id}`)}
-                  className="bg-card rounded-xl overflow-hidden border border-border active:opacity-75 text-left"
+                  className="bg-card rounded-2xl overflow-hidden border border-border active:scale-[0.97] text-left"
                 >
-                  <div className="aspect-square bg-secondary">
+                  <div className="aspect-square bg-muted">
                     <img
                       src={p.image_url || ffTopup}
                       alt={p.name}
@@ -54,8 +51,8 @@ const ProductGrid = () => {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="px-1.5 py-2">
-                    <p className="text-[11px] font-semibold text-foreground text-center leading-tight line-clamp-2">
+                  <div className="px-2 py-2.5">
+                    <p className="text-[11px] font-bold text-foreground text-center leading-tight line-clamp-2">
                       {p.name}
                     </p>
                   </div>
