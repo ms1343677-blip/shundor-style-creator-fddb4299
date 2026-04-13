@@ -54,14 +54,20 @@ Deno.serve(async (req) => {
     if (smsError) throw smsError;
 
     if (!smsMatch) {
-      return new Response(JSON.stringify({ error: "দুঃখিত, আপনার Transaction ID খুঁজে পাওয়া যাচ্ছে না। অনুগ্রহ করে সঠিক Transaction ID দিন অথবা কিছুক্ষণ পর আবার চেষ্টা করুন।" }), { status: 400, headers });
+      return new Response(JSON.stringify({ error: "দুঃখিত, আপনার Transaction ID খুঁজে পাওয়া যায়নি। অনুগ্রহ করে সঠিক Transaction ID দিন অথবা কিছুক্ষণ পর আবার চেষ্টা করুন।" }), { status: 400, headers });
     }
 
     // Check amount match (allow small tolerance)
     const smsAmount = Number(smsMatch.amount);
     const reqAmount = Number(amount);
     if (Math.abs(smsAmount - reqAmount) > 0.5) {
-      return new Response(JSON.stringify({ error: `দুঃখিত, Amount মিলছে না। প্রত্যাশিত ৳${smsAmount}, পাওয়া গেছে ৳${reqAmount}। সঠিক Amount দিয়ে পেমেন্ট করুন।` }), { status: 400, headers });
+      let amountError: string;
+      if (reqAmount < smsAmount) {
+        amountError = `দুঃখিত, আপনি কম টাকা পাঠিয়েছেন। আপনাকে ৳${smsAmount} পাঠাতে হবে, কিন্তু আপনি ৳${reqAmount} পাঠিয়েছেন। সঠিক Amount প্রদান করুন।`;
+      } else {
+        amountError = `দুঃখিত, আপনি বেশি টাকা পাঠিয়েছেন। আপনাকে ৳${smsAmount} পাঠাতে হবে, কিন্তু আপনি ৳${reqAmount} পাঠিয়েছেন। সঠিক Amount প্রদান করুন।`;
+      }
+      return new Response(JSON.stringify({ error: amountError }), { status: 400, headers });
     }
 
     // Mark SMS as used
