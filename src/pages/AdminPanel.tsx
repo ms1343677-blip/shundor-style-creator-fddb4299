@@ -83,7 +83,7 @@ const AdminPanel = () => {
   const { data: packages } = useQuery({
     queryKey: ["admin-packages", selectedProductId],
     queryFn: async () => {
-      let q = supabase.from("packages").select("*, products(name)").order("sort_order");
+      let q = supabase.from("packages").select("*, products(name), auto_apis(name)").order("sort_order");
       if (selectedProductId) q = q.eq("product_id", selectedProductId);
       const { data, error } = await q;
       if (error) throw error;
@@ -229,7 +229,7 @@ const AdminPanel = () => {
   const savePackage = useMutation({
     mutationFn: async () => {
       if (!selectedProductId && !editingPackage) return;
-      const payload = { name: pkgName, price: parseFloat(pkgPrice), sort_order: pkgSortOrder, product_id: editingPackage?.product_id || selectedProductId! };
+      const payload: any = { name: pkgName, price: parseFloat(pkgPrice), sort_order: pkgSortOrder, product_id: editingPackage?.product_id || selectedProductId!, auto_topup_enabled: pkgAutoTopup, auto_api_id: pkgAutoApiId || null, product_variation_name: pkgVariationName };
       if (editingPackage) {
         const { error } = await supabase.from("packages").update(payload).eq("id", editingPackage.id);
         if (error) throw error;
@@ -298,11 +298,11 @@ const AdminPanel = () => {
   });
 
   const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); };
-  const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); };
+  const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); setPkgAutoTopup(false); setPkgAutoApiId(""); setPkgVariationName(""); };
   const resetBannerForm = () => { setEditingBanner(null); setBannerTitle(""); setBannerImageUrl(""); setBannerLinkUrl(""); setBannerSortOrder(0); };
 
   const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategoryId(p.category_id || ""); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); };
-  const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); };
+  const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); setPkgAutoTopup(p.auto_topup_enabled || false); setPkgAutoApiId(p.auto_api_id || ""); setPkgVariationName(p.product_variation_name || ""); };
   const startEditBanner = (b: any) => { setEditingBanner(b); setBannerTitle(b.title); setBannerImageUrl(b.image_url); setBannerLinkUrl(b.link_url || ""); setBannerSortOrder(b.sort_order); };
 
   const handleLogout = async () => { await signOut(); navigate("/login"); };
@@ -320,6 +320,7 @@ const AdminPanel = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
+    { id: "auto-api", label: "Auto API", icon: Zap },
     { id: "webhook-sms", label: "Webhook SMS", icon: MessageSquare },
     { id: "payment", label: "Payment", icon: Wallet },
     { id: "settings", label: "Settings", icon: Settings },
