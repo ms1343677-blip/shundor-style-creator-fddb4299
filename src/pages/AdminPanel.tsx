@@ -1095,6 +1095,11 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
                   msg.sender === "Nagad" ? "bg-[#F6921E]/10 text-[#F6921E]" :
                   "bg-muted text-muted-foreground"
                 }`}>{msg.sender || "Unknown"}</span>
+                {msg.status && msg.status !== "verified" && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                    msg.status === "pending" ? "bg-yellow-500/10 text-yellow-600" : "bg-destructive/10 text-destructive"
+                  }`}>{msg.status}</span>
+                )}
                 {msg.is_used && <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">Used</span>}
                 <span className="text-[10px] text-muted-foreground ml-auto">{new Date(msg.created_at).toLocaleString()}</span>
               </div>
