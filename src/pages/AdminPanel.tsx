@@ -9,11 +9,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X,
-  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye
+  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye, Wallet, RotateCcw
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms";
+type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -317,6 +317,7 @@ const AdminPanel = () => {
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
     { id: "webhook-sms", label: "Webhook SMS", icon: MessageSquare },
+    { id: "payment", label: "Payment", icon: Wallet },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -758,6 +759,9 @@ const AdminPanel = () => {
 
           {/* WEBHOOK SMS */}
           {activeTab === "webhook-sms" && <WebhookSmsTab user={user} />}
+
+          {/* PAYMENT */}
+          {activeTab === "payment" && <PaymentTab user={user} />}
 
           {/* SETTINGS */}
           {activeTab === "settings" && (
