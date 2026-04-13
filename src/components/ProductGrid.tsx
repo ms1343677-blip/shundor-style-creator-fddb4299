@@ -8,6 +8,19 @@ const ProductGrid = () => {
   const navigate = useNavigate();
   const [pressedId, setPressedId] = useState<string | null>(null);
 
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: products } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
@@ -29,7 +42,16 @@ const ProductGrid = () => {
     );
   }
 
-  const categories = [...new Set(products.map((p) => p.category))];
+  // Group products by category_id, fallback to old category text
+  const getCategoryName = (product: any) => {
+    if (product.category_id && categories) {
+      const cat = categories.find((c: any) => c.id === product.category_id);
+      if (cat) return cat.name;
+    }
+    return product.category || "Other";
+  };
+
+  const categoryNames = [...new Set(products.map((p) => getCategoryName(p)))];
 
   const handleClick = (id: string) => {
     setPressedId(id);
@@ -40,12 +62,12 @@ const ProductGrid = () => {
 
   return (
     <div className="max-w-lg mx-auto">
-      {categories.map((cat) => (
+      {categoryNames.map((cat) => (
         <section key={cat} className="px-3 pt-5 pb-2">
-          <h2 className="text-center text-[20px] font-black text-primary mb-4">{cat}</h2>
-          <div className="grid grid-cols-3 gap-x-2.5 gap-y-4">
+          <h2 className="text-center text-[18px] font-black text-primary mb-3">{cat}</h2>
+          <div className="grid grid-cols-3 gap-x-2 gap-y-3">
             {products
-              .filter((p) => p.category === cat)
+              .filter((p) => getCategoryName(p) === cat)
               .map((p) => (
                 <button
                   key={p.id}
@@ -53,7 +75,7 @@ const ProductGrid = () => {
                   className="flex flex-col items-center text-center"
                 >
                   <div
-                    className={`w-full aspect-square rounded-xl overflow-hidden bg-card transition-transform duration-200 ${
+                    className={`w-[90%] aspect-square rounded-xl overflow-hidden bg-card transition-transform duration-200 ${
                       pressedId === p.id ? "scale-90" : "scale-100"
                     }`}
                   >
@@ -64,7 +86,7 @@ const ProductGrid = () => {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <p className="text-[13px] font-bold text-foreground mt-2 leading-tight line-clamp-2 px-0.5">
+                  <p className="text-[11px] font-bold text-foreground mt-1.5 leading-tight line-clamp-2 px-0.5">
                     {p.name}
                   </p>
                 </button>
