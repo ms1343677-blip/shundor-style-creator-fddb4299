@@ -794,6 +794,9 @@ const AdminPanel = () => {
             </div>
           )}
 
+          {/* AUTO API */}
+          {activeTab === "auto-api" && <AutoApiTab user={user} />}
+
           {/* WEBHOOK SMS */}
           {activeTab === "webhook-sms" && <WebhookSmsTab user={user} />}
 
