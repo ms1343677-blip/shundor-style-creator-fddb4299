@@ -17,11 +17,19 @@ const LatestOrders = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("*, products(name), packages(name), profiles:user_id(full_name, email)")
+        .select("*, products(name), packages(name)")
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
-      return data;
+      // Fetch profile names for each order
+      const userIds = [...new Set(data?.map((o: any) => o.user_id) || [])];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", userIds);
+      const profileMap: Record<string, any> = {};
+      profiles?.forEach((p: any) => { profileMap[p.user_id] = p; });
+      return data?.map((o: any) => ({ ...o, profile: profileMap[o.user_id] || null })) || [];
     },
     staleTime: 30_000,
   });
