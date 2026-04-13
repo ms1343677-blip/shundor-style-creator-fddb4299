@@ -843,6 +843,11 @@ const AdminPanel = () => {
 const WebhookSmsTab = ({ user }: { user: any }) => {
   const queryClient = useQueryClient();
   const [viewMessage, setViewMessage] = useState<any>(null);
+  const [addSender, setAddSender] = useState("bKash");
+  const [addPhone, setAddPhone] = useState("");
+  const [addTrxId, setAddTrxId] = useState("");
+  const [addAmount, setAddAmount] = useState("");
+  const [addingMsg, setAddingMsg] = useState(false);
 
   const { data: webhooks, refetch: refetchWebhooks } = useQuery({
     queryKey: ["admin-sms-webhooks"],
@@ -942,6 +947,74 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
           ))}
           {!webhooks?.length && <p className="text-center text-muted-foreground text-[12px] py-4">No webhooks. Click "New Webhook" to create one.</p>}
         </div>
+      </div>
+
+      {/* Add Store Message */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2 mb-3">
+          <Plus className="w-4 h-4" /> Add Store Message
+        </h3>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <select
+            value={addSender}
+            onChange={(e) => setAddSender(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-[12px]"
+          >
+            <option value="bKash">bKash</option>
+            <option value="Nagad">Nagad</option>
+            <option value="Rocket">Rocket</option>
+          </select>
+          <Input
+            placeholder="Phone (01XXXXXXXXX)"
+            value={addPhone}
+            onChange={(e) => setAddPhone(e.target.value)}
+            className="h-9 text-[12px]"
+          />
+          <Input
+            placeholder="Transaction ID"
+            value={addTrxId}
+            onChange={(e) => setAddTrxId(e.target.value)}
+            className="h-9 text-[12px]"
+          />
+          <Input
+            placeholder="Amount (৳)"
+            type="number"
+            value={addAmount}
+            onChange={(e) => setAddAmount(e.target.value)}
+            className="h-9 text-[12px]"
+          />
+        </div>
+        <Button
+          size="sm"
+          className="w-full"
+          disabled={addingMsg || !addTrxId || !addAmount}
+          onClick={async () => {
+            setAddingMsg(true);
+            try {
+              const webhookId = webhooks?.[0]?.id;
+              if (!webhookId) { toast({ title: "Error", description: "প্রথমে একটি Webhook তৈরি করুন", variant: "destructive" }); return; }
+              const rawMessage = `${addSender} payment received. Tk ${addAmount} from ${addPhone || "N/A"}. TrxID ${addTrxId}`;
+              const { error } = await supabase.from("sms_messages").insert({
+                webhook_id: webhookId,
+                sender: addSender,
+                phone_number: addPhone,
+                transaction_id: addTrxId,
+                amount: parseFloat(addAmount),
+                raw_message: rawMessage,
+              });
+              if (error) throw error;
+              toast({ title: "Store Message যোগ হয়েছে!" });
+              setAddPhone(""); setAddTrxId(""); setAddAmount("");
+              refetchMessages();
+            } catch (e: any) {
+              toast({ title: "Error", description: e.message, variant: "destructive" });
+            } finally {
+              setAddingMsg(false);
+            }
+          }}
+        >
+          <Plus className="w-3.5 h-3.5 mr-1" /> Add Message
+        </Button>
       </div>
 
       {/* SMS Messages */}
