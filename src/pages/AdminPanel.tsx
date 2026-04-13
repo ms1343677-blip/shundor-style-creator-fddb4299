@@ -857,6 +857,8 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
   const [addTrxId, setAddTrxId] = useState("");
   const [addAmount, setAddAmount] = useState("");
   const [addingMsg, setAddingMsg] = useState(false);
+  const [filterSender, setFilterSender] = useState<string>("All");
+  const [filterStatus, setFilterStatus] = useState<string>("All");
 
   const { data: webhooks, refetch: refetchWebhooks } = useQuery({
     queryKey: ["admin-sms-webhooks"],
@@ -1051,19 +1053,41 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
 
       {/* SMS Messages */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
-          <h3 className="text-[13px] font-bold text-foreground">Store Messages ({smsMessages?.length || 0})</h3>
-          <div className="flex gap-1.5">
-            <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
-            {(smsMessages?.length || 0) > 0 && (
-              <button onClick={deleteAllMessages} className="h-7 px-2 rounded-md text-[10px] font-semibold border border-destructive/30 text-destructive active:opacity-75 flex items-center gap-1">
-                <Trash2 className="w-3 h-3" /> Delete All
+        <div className="px-4 py-2.5 border-b border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[13px] font-bold text-foreground">Store Messages ({smsMessages?.length || 0})</h3>
+            <div className="flex gap-1.5">
+              <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+              {(smsMessages?.length || 0) > 0 && (
+                <button onClick={deleteAllMessages} className="h-7 px-2 rounded-md text-[10px] font-semibold border border-destructive/30 text-destructive active:opacity-75 flex items-center gap-1">
+                  <Trash2 className="w-3 h-3" /> Delete All
+                </button>
+              )}
+            </div>
+          </div>
+          {/* Filters */}
+          <div className="flex gap-1.5 flex-wrap">
+            {["All", "bKash", "Nagad", "Rocket"].map((s) => (
+              <button key={s} onClick={() => setFilterSender(s)}
+                className={`h-6 px-2.5 rounded-full text-[10px] font-semibold border ${filterSender === s ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border"}`}>
+                {s}
               </button>
-            )}
+            ))}
+            <span className="w-px bg-border mx-1" />
+            {["All", "verified", "pending", "rejected"].map((s) => (
+              <button key={s} onClick={() => setFilterStatus(s)}
+                className={`h-6 px-2.5 rounded-full text-[10px] font-semibold border capitalize ${filterStatus === s ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border"}`}>
+                {s === "All" ? "All Status" : s}
+              </button>
+            ))}
           </div>
         </div>
         <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
-          {smsMessages?.map((msg: any) => (
+          {smsMessages?.filter((msg: any) => {
+            if (filterSender !== "All" && msg.sender !== filterSender) return false;
+            if (filterStatus !== "All" && msg.status !== filterStatus) return false;
+            return true;
+          }).map((msg: any) => (
             <div key={msg.id} className="px-4 py-3">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
@@ -1071,6 +1095,11 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
                   msg.sender === "Nagad" ? "bg-[#F6921E]/10 text-[#F6921E]" :
                   "bg-muted text-muted-foreground"
                 }`}>{msg.sender || "Unknown"}</span>
+                {msg.status && msg.status !== "verified" && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                    msg.status === "pending" ? "bg-yellow-500/10 text-yellow-600" : "bg-destructive/10 text-destructive"
+                  }`}>{msg.status}</span>
+                )}
                 {msg.is_used && <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">Used</span>}
                 <span className="text-[10px] text-muted-foreground ml-auto">{new Date(msg.created_at).toLocaleString()}</span>
               </div>
@@ -1105,6 +1134,11 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
 // Payment Tab Component
 const PaymentTab = ({ user }: { user: any }) => {
   const queryClient = useQueryClient();
+  const [editingPH, setEditingPH] = useState<any>(null);
+  const [phSender, setPhSender] = useState("");
+  const [phTrxId, setPhTrxId] = useState("");
+  const [phAmount, setPhAmount] = useState("");
+  const [phPhone, setPhPhone] = useState("");
 
   const { data: siteSettings } = useQuery({
     queryKey: ["admin-site-settings"],
@@ -1292,6 +1326,35 @@ const PaymentTab = ({ user }: { user: any }) => {
         </div>
       )}
 
+      {/* Edit Payment History Modal */}
+      {editingPH && (
+        <div className="bg-card rounded-xl border-2 border-primary p-4 space-y-2">
+          <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2"><Pencil className="w-4 h-4" /> Edit Payment</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={phSender} onChange={(e) => setPhSender(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-[12px]">
+              <option value="bKash">bKash</option>
+              <option value="Nagad">Nagad</option>
+              <option value="Rocket">Rocket</option>
+            </select>
+            <Input value={phPhone} onChange={(e) => setPhPhone(e.target.value)} placeholder="Phone" className="h-9 text-[12px]" />
+            <Input value={phTrxId} onChange={(e) => setPhTrxId(e.target.value)} placeholder="TrxID" className="h-9 text-[12px]" />
+            <Input value={phAmount} onChange={(e) => setPhAmount(e.target.value)} type="number" placeholder="Amount" className="h-9 text-[12px]" />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={async () => {
+              const { error } = await supabase.from("payment_history").update({
+                sender: phSender, phone_number: phPhone, transaction_id: phTrxId, amount: parseFloat(phAmount) || 0,
+              }).eq("id", editingPH.id);
+              if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+              setEditingPH(null);
+              refetchHistory();
+              toast({ title: "Payment আপডেট হয়েছে!" });
+            }}>Save</Button>
+            <Button size="sm" variant="outline" onClick={() => setEditingPH(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
       {/* Payment History (Used SMS) */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
@@ -1328,6 +1391,15 @@ const PaymentTab = ({ user }: { user: any }) => {
                 <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-primary">৳{ph.amount || 0}</span></div>
               </div>
               <div className="flex items-center gap-2 mt-1.5">
+                <button onClick={() => {
+                  setEditingPH(ph);
+                  setPhSender(ph.sender || "bKash");
+                  setPhPhone(ph.phone_number || "");
+                  setPhTrxId(ph.transaction_id || "");
+                  setPhAmount(String(ph.amount || 0));
+                }} className="text-[10px] text-muted-foreground flex items-center gap-1 active:opacity-75">
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
                 <button onClick={async () => {
                   const { error } = await supabase.from("payment_history").delete().eq("id", ph.id);
                   if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
