@@ -3,10 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import Footer from "@/components/Footer";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { RefreshCw, Info, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
@@ -67,7 +65,7 @@ const ProductDetail = () => {
     try {
       if (paymentMethod === "wallet") {
         if (!wallet || wallet.balance < selectedPkg.price) {
-          toast({ title: "ব্যালেন্স অপর্যাপ্ত", description: "আপনার ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই।", variant: "destructive" });
+          toast({ title: "ব্যালেন্স অপর্যাপ্ত", variant: "destructive" });
           setLoading(false);
           return;
         }
@@ -76,8 +74,7 @@ const ProductDetail = () => {
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-
-        toast({ title: "অর্ডার সফল! ✅", description: "আপনার অর্ডার সফলভাবে প্লেস হয়েছে।" });
+        toast({ title: "অর্ডার সফল! ✅" });
         refetchWallet();
         navigate("/orders");
       } else {
@@ -92,15 +89,11 @@ const ProductDetail = () => {
           },
         });
         if (error) throw error;
-        if (data?.payment_url) {
-          window.location.href = data.payment_url;
-        } else {
-          throw new Error("Payment URL not received");
-        }
+        if (data?.payment_url) window.location.href = data.payment_url;
+        else throw new Error("Payment URL not received");
       }
     } catch (err: any) {
-      console.error(err);
-      toast({ title: "ত্রুটি", description: err.message || "কিছু ভুল হয়েছে", variant: "destructive" });
+      toast({ title: "ত্রুটি", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -109,130 +102,122 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen bg-background pb-14">
       <Header />
-      <div className="max-w-lg mx-auto px-4 py-4 space-y-3">
-        {/* Product Info */}
+      <div className="max-w-lg mx-auto px-3 py-3 space-y-2.5">
+        {/* Product header */}
         {product && (
-          <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
+          <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
             {product.image_url && (
-              <img src={product.image_url} alt={product.name} className="w-16 h-16 rounded-lg object-cover" />
+              <img src={product.image_url} alt={product.name} className="w-14 h-14 rounded-lg object-cover" />
             )}
             <div>
-              <h1 className="text-lg font-bold text-foreground">{product.name}</h1>
-              <p className="text-xs text-muted-foreground">{product.category} · {product.sub_category}</p>
+              <h1 className="text-base font-bold text-foreground">{product.name}</h1>
+              <p className="text-[11px] text-muted-foreground">{product.category} · {product.sub_category}</p>
             </div>
           </div>
         )}
 
-        {/* Step 1: Select Package */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-6 h-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
-            <h2 className="text-sm font-bold text-foreground">Select Recharge</h2>
+        {/* Step 1 */}
+        <div className="bg-card rounded-xl border border-border p-3">
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="w-5 h-5 rounded bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-bold">1</span>
+            <h2 className="text-[13px] font-bold text-foreground">Select Recharge</h2>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {packages?.map((pkg) => {
-              const isSelected = selectedPackage === pkg.id;
+              const sel = selectedPackage === pkg.id;
               return (
                 <button
                   key={pkg.id}
                   onClick={() => setSelectedPackage(pkg.id)}
-                  className={`border rounded-lg p-3 text-left active:scale-[0.97] ${
-                    isSelected
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
-                      : "border-border"
+                  className={`border rounded-lg px-3 py-2.5 text-left active:opacity-75 ${
+                    sel ? "border-primary bg-primary/5" : "border-border bg-card"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-foreground font-medium">{pkg.name}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-primary" />}
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[12px] text-foreground font-medium truncate">{pkg.name}</span>
+                    {sel && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
                   </div>
-                  <span className="text-sm font-bold text-primary mt-0.5 block">{pkg.price}৳</span>
+                  <span className="text-[13px] font-bold text-primary">{pkg.price}৳</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Step 2: Game ID */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-6 h-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
-            <h2 className="text-sm font-bold text-foreground">Account Info</h2>
+        {/* Step 2 */}
+        <div className="bg-card rounded-xl border border-border p-3">
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="w-5 h-5 rounded bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-bold">2</span>
+            <h2 className="text-[13px] font-bold text-foreground">Game ID</h2>
           </div>
           <Input
-            placeholder="এখানে গেমের আইডি কোড দিন"
+            placeholder="এখানে গেমের আইডি দিন"
             value={gameId}
             onChange={(e) => setGameId(e.target.value)}
-            className="text-sm"
+            className="text-[13px] h-10"
           />
         </div>
 
-        {/* Step 3: Payment */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-6 h-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
-            <h2 className="text-sm font-bold text-foreground">Payment Method</h2>
+        {/* Step 3 */}
+        <div className="bg-card rounded-xl border border-border p-3">
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="w-5 h-5 rounded bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-bold">3</span>
+            <h2 className="text-[13px] font-bold text-foreground">Payment</h2>
           </div>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <button
-              onClick={() => setPaymentMethod("wallet")}
-              className={`border rounded-lg p-3 text-center active:scale-[0.97] ${
-                paymentMethod === "wallet" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border"
-              }`}
-            >
-              <span className="text-xl">💰</span>
-              <p className="text-xs font-semibold text-foreground mt-1">Wallet Pay</p>
-            </button>
-            <button
-              onClick={() => setPaymentMethod("instant")}
-              className={`border rounded-lg p-3 text-center active:scale-[0.97] ${
-                paymentMethod === "instant" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border"
-              }`}
-            >
-              <span className="text-xl">⚡</span>
-              <p className="text-xs font-semibold text-foreground mt-1">Instant Pay</p>
-            </button>
+          <div className="grid grid-cols-2 gap-1.5 mb-3">
+            {[
+              { key: "wallet" as const, label: "Wallet Pay", emoji: "💰" },
+              { key: "instant" as const, label: "Instant Pay", emoji: "⚡" },
+            ].map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setPaymentMethod(m.key)}
+                className={`border rounded-lg py-3 text-center active:opacity-75 ${
+                  paymentMethod === m.key ? "border-primary bg-primary/5" : "border-border"
+                }`}
+              >
+                <span className="text-lg">{m.emoji}</span>
+                <p className="text-[12px] font-bold text-foreground mt-0.5">{m.label}</p>
+              </button>
+            ))}
           </div>
 
           {paymentMethod === "wallet" && (
-            <div className="space-y-1.5 mb-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5" /> Balance: <span className="text-primary font-bold">৳{wallet?.balance?.toFixed(2) || "0.00"}</span>
-                <RefreshCw className="w-3 h-3 cursor-pointer active:scale-95" onClick={() => refetchWallet()} />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5" /> Required: <span className="text-primary font-bold">৳{selectedPkg?.price || 0}</span>
-              </div>
+            <div className="bg-secondary rounded-lg px-3 py-2 mb-3 flex items-center justify-between text-[12px]">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Info className="w-3.5 h-3.5" /> Balance: <b className="text-primary">৳{wallet?.balance?.toFixed(0) || "0"}</b>
+                <RefreshCw className="w-3 h-3 cursor-pointer ml-1" onClick={() => refetchWallet()} />
+              </span>
+              <span className="text-muted-foreground">Need: <b className="text-primary">৳{selectedPkg?.price || 0}</b></span>
             </div>
           )}
 
           {paymentMethod === "instant" && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
-              <Info className="w-3.5 h-3.5" /> UddoktaPay — <span className="text-primary font-bold">৳{selectedPkg?.price || 0}</span>
+            <div className="bg-secondary rounded-lg px-3 py-2 mb-3 text-[12px] text-muted-foreground">
+              <Info className="w-3.5 h-3.5 inline mr-1" /> Amount: <b className="text-primary">৳{selectedPkg?.price || 0}</b>
             </div>
           )}
 
-          <Button
+          <button
             onClick={handleBuyNow}
             disabled={loading}
-            className="w-full font-semibold text-sm py-5 active:scale-[0.98]"
+            className="w-full bg-primary text-primary-foreground h-11 rounded-xl text-[14px] font-bold active:opacity-80 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? "Processing..." : "Buy Now"}
-          </Button>
+          </button>
         </div>
 
         {/* Rules */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h3 className="text-sm font-bold text-foreground mb-2">📋 Rules</h3>
-          <div className="space-y-1.5 text-xs text-muted-foreground leading-relaxed">
+        <div className="bg-card rounded-xl border border-border p-3">
+          <h3 className="text-[13px] font-bold text-foreground mb-2">📋 Rules</h3>
+          <div className="space-y-1 text-[11px] text-muted-foreground">
             <p>◉ শুধুমাত্র Bangladesh সার্ভারে ID Code দিয়ে টপ আপ হবে</p>
-            <p>◉ Player ID ভুল দিয়ে Diamond না পেলে কর্তৃপক্ষ দায়ী নয়</p>
-            <p>◉ অর্ডার Cancel হলে কারণ হিস্টোরিতে দেখুন</p>
+            <p>◉ Player ID ভুল দিলে কর্তৃপক্ষ দায়ী নয়</p>
+            <p>◉ Cancel হলে হিস্টোরিতে কারণ দেখুন</p>
           </div>
         </div>
       </div>
-      <Footer />
       <BottomNav />
     </div>
   );

@@ -1,61 +1,91 @@
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-
-const stats = [
-  { label: "Support Pin", value: "3984" },
-  { label: "Weekly Spent", value: "0 ৳" },
-  { label: "Total Spent", value: "0" },
-  { label: "Total Order", value: "0" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Wallet, ShoppingBag, RefreshCw } from "lucide-react";
 
 const Profile = () => {
   const { user, isReady } = useAuth();
 
-  if (!isReady) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
+  const { data: wallet, refetch } = useQuery({
+    queryKey: ["wallet"],
+    queryFn: async () => {
+      await supabase.rpc("ensure_wallet");
+      const { data, error } = await supabase.from("wallets").select("*").eq("user_id", user!.id).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: orderCount } = useQuery({
+    queryKey: ["order-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user,
+  });
+
+  if (!isReady) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">Loading...</div>;
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
-  const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-14">
       <Header />
-      <div className="max-w-lg mx-auto px-4 py-6">
-        <div className="text-center mb-6 animate-fade-in">
-          <div className="w-24 h-24 rounded-full bg-primary/20 border-4 border-primary/30 mx-auto mb-3 flex items-center justify-center text-primary text-3xl font-bold">
-            {initial}
+      <div className="max-w-lg mx-auto px-3 py-4 space-y-3">
+        {/* Profile Card */}
+        <div className="bg-nav rounded-xl p-4 text-center">
+          <div className="w-14 h-14 rounded-full bg-primary text-primary-foreground mx-auto mb-2 flex items-center justify-center text-xl font-black">
+            {displayName.charAt(0).toUpperCase()}
           </div>
-          <h2 className="text-lg font-bold text-primary">Hi, {displayName}</h2>
-          <p className="text-sm text-foreground font-medium flex items-center justify-center gap-2 mt-1">
-            Available Balance : 0 Tk <RefreshCw className="w-4 h-4 text-muted-foreground cursor-pointer" />
-          </p>
+          <p className="text-base font-bold text-nav-foreground">{displayName}</p>
+          <p className="text-[11px] text-nav-foreground/50">{user?.email}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          {stats.map((s) => (
-            <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center shadow-sm">
-              <p className="text-lg font-bold text-primary">{s.value}</p>
-              <p className="text-sm text-foreground">{s.label}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Wallet className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">Balance</p>
+              <p className="text-base font-black text-foreground flex items-center gap-1">
+                ৳{wallet?.balance?.toFixed(0) || "0"}
+                <RefreshCw className="w-3 h-3 text-muted-foreground cursor-pointer" onClick={() => refetch()} />
+              </p>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <ShoppingBag className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">Orders</p>
+              <p className="text-base font-black text-foreground">{orderCount ?? 0}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Account Info */}
+        <div className="bg-card rounded-xl border border-border divide-y divide-border overflow-hidden">
+          {[
+            { label: "Email", value: user?.email || "-" },
+            { label: "Account", value: "Verified ✅" },
+            { label: "Support Pin", value: "3984" },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between px-4 py-3">
+              <span className="text-[12px] text-muted-foreground">{row.label}</span>
+              <span className="text-[12px] font-semibold text-foreground">{row.value}</span>
             </div>
           ))}
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-slide-up">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-            🔒 Account Information
-          </h3>
-          <div className="text-center space-y-4">
-            <div className="border border-border rounded-lg p-4">
-              <div className="bg-primary text-primary-foreground rounded-lg py-2 px-6 inline-block text-sm font-semibold mb-2">
-                0.00৳
-              </div>
-              <p className="font-bold text-foreground">Available Balance</p>
-            </div>
-            <div className="border border-border rounded-lg p-4 flex items-center justify-center">
-              <ShieldCheck className="w-10 h-10 text-blue-500" />
-            </div>
-          </div>
         </div>
       </div>
       <BottomNav />
