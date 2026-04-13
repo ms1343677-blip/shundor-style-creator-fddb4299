@@ -52,7 +52,7 @@ const LatestOrders = () => {
 
         <div className="space-y-2.5">
           {orders.map((order: any) => {
-            const profile = order.profiles;
+            const profile = order.profile;
             const name = profile?.full_name || profile?.email?.split("@")[0] || "User";
             const initial = name.charAt(0).toUpperCase();
             const status = statusConfig[order.status] || statusConfig.pending;
