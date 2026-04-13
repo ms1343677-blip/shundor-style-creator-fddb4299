@@ -472,25 +472,151 @@ const AdminPanel = () => {
           {/* USERS */}
           {activeTab === "users" && (
             <div className="space-y-3">
+              {/* Search */}
+              <div className="bg-card rounded-xl border border-border p-3">
+                <Input
+                  placeholder="Search by email or name..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="h-9 text-[13px]"
+                />
+              </div>
+
+              {/* User detail panel */}
+              {selectedUser && (() => {
+                const profile = profiles?.find((p: any) => p.user_id === selectedUser);
+                const wallet = wallets?.find((w: any) => w.user_id === selectedUser);
+                const role = userRoles?.find((r: any) => r.user_id === selectedUser);
+                const userOrders = orders?.filter((o: any) => o.user_id === selectedUser) || [];
+                return (
+                  <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-[13px] font-bold text-foreground">User Details</h3>
+                      <button onClick={() => setSelectedUser(null)} className="text-muted-foreground active:opacity-60"><X className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[12px]">
+                      <div className="bg-secondary rounded-lg p-2.5">
+                        <p className="text-[10px] text-muted-foreground">Email</p>
+                        <p className="font-semibold text-foreground truncate">{profile?.email || "N/A"}</p>
+                      </div>
+                      <div className="bg-secondary rounded-lg p-2.5">
+                        <p className="text-[10px] text-muted-foreground">Name</p>
+                        <p className="font-semibold text-foreground">{profile?.full_name || "N/A"}</p>
+                      </div>
+                      <div className="bg-secondary rounded-lg p-2.5">
+                        <p className="text-[10px] text-muted-foreground">Balance</p>
+                        <p className="font-bold text-primary">৳{wallet?.balance || 0}</p>
+                      </div>
+                      <div className="bg-secondary rounded-lg p-2.5">
+                        <p className="text-[10px] text-muted-foreground">Role</p>
+                        <p className="font-semibold text-foreground">{role?.role || "user"}</p>
+                      </div>
+                    </div>
+
+                    {/* Add Balance */}
+                    <div>
+                      <label className="text-[11px] text-muted-foreground mb-1 block">Add Balance</label>
+                      <div className="flex gap-2">
+                        <Input type="number" placeholder="Amount" value={addBalanceAmount} onChange={(e) => setAddBalanceAmount(e.target.value)} className="h-9 text-[13px] flex-1" />
+                        <Button size="sm" onClick={async () => {
+                          const amt = parseFloat(addBalanceAmount);
+                          if (!amt || amt <= 0) return;
+                          try {
+                            const { data, error } = await supabase.functions.invoke("admin-user", {
+                              body: { action: "add_balance", user_id: selectedUser, amount: amt },
+                            });
+                            if (error) throw error;
+                            if (data?.error) throw new Error(data.error);
+                            toast({ title: `৳${amt} added!` });
+                            setAddBalanceAmount("");
+                            refetchWallets();
+                          } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
+                        }}>Add</Button>
+                      </div>
+                    </div>
+
+                    {/* Change Role */}
+                    <div>
+                      <label className="text-[11px] text-muted-foreground mb-1 block">Change Role</label>
+                      <div className="flex gap-1.5">
+                        {(["user", "admin", "moderator"] as const).map((r) => (
+                          <button
+                            key={r}
+                            onClick={async () => {
+                              try {
+                                const { data, error } = await supabase.functions.invoke("admin-user", {
+                                  body: { action: "set_role", user_id: selectedUser, role: r === "user" ? "remove" : r },
+                                });
+                                if (error) throw error;
+                                if (data?.error) throw new Error(data.error);
+                                toast({ title: `Role set to ${r}` });
+                                refetchRoles();
+                              } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
+                            }}
+                            className={`h-8 px-3 rounded-lg text-[11px] font-bold border active:opacity-75 ${
+                              (role?.role === r || (!role && r === "user"))
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground"
+                            }`}
+                          >{r}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* User Orders */}
+                    {userOrders.length > 0 && (
+                      <div>
+                        <p className="text-[11px] text-muted-foreground mb-1">Orders ({userOrders.length})</p>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {userOrders.map((o: any) => (
+                            <div key={o.id} className="bg-secondary rounded-lg px-3 py-2 flex items-center justify-between text-[11px]">
+                              <span className="text-foreground font-medium truncate">{o.products?.name} · ৳{o.amount}</span>
+                              <span className={`font-bold ${o.status === "completed" ? "text-success" : o.status === "cancelled" ? "text-destructive" : "text-notice-foreground"}`}>{o.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* User List */}
               <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-border">
-                  <h3 className="text-[13px] font-bold text-foreground">All Users ({wallets?.length || 0})</h3>
+                  <h3 className="text-[13px] font-bold text-foreground">All Users ({profiles?.length || wallets?.length || 0})</h3>
                 </div>
                 <div className="divide-y divide-border">
-                  {wallets?.map((w: any) => {
-                    const role = userRoles?.find((r: any) => r.user_id === w.user_id);
-                    return (
-                      <div key={w.id} className="px-4 py-2.5 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[11px] font-bold shrink-0">U</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-medium text-foreground truncate">{w.user_id}</p>
-                          <p className="text-[10px] text-muted-foreground">Balance: ৳{w.balance}</p>
-                        </div>
-                        {role && <span className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold">{role.role}</span>}
-                      </div>
-                    );
-                  })}
-                  {!wallets?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No users</div>}
+                  {(profiles || [])
+                    .filter((p: any) => {
+                      if (!userSearchQuery) return true;
+                      const q = userSearchQuery.toLowerCase();
+                      return (p.email || "").toLowerCase().includes(q) || (p.full_name || "").toLowerCase().includes(q);
+                    })
+                    .map((p: any) => {
+                      const wallet = wallets?.find((w: any) => w.user_id === p.user_id);
+                      const role = userRoles?.find((r: any) => r.user_id === p.user_id);
+                      const isSelected = selectedUser === p.user_id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setSelectedUser(isSelected ? null : p.user_id)}
+                          className={`w-full text-left px-4 py-2.5 flex items-center gap-3 active:bg-secondary ${isSelected ? "bg-primary/5" : ""}`}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-bold shrink-0">
+                            {(p.full_name || p.email || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold text-foreground truncate">{p.full_name || p.email?.split("@")[0] || "User"}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{p.email}</p>
+                          </div>
+                          <span className="text-[11px] font-bold text-primary shrink-0">৳{wallet?.balance || 0}</span>
+                          {role && <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold shrink-0">{role.role}</span>}
+                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+                        </button>
+                      );
+                    })}
+                  {!profiles?.length && !wallets?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No users</div>}
                 </div>
               </div>
             </div>
