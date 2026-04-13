@@ -34,16 +34,16 @@ const ProductGrid = () => {
       {categories.map((cat) => (
         <section key={cat} className="px-3 pt-5 pb-2">
           <h2 className="text-center text-[20px] font-black text-primary mb-4">{cat}</h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-x-3 gap-y-4">
             {products
               .filter((p) => p.category === cat)
               .map((p) => (
                 <button
                   key={p.id}
                   onClick={() => navigate(`/product/${p.id}`)}
-                  className="bg-card rounded-2xl overflow-hidden border border-border active:scale-[0.97] text-left"
+                  className="flex flex-col items-center active:scale-[0.97] text-center"
                 >
-                  <div className="aspect-square bg-muted">
+                  <div className="w-full aspect-square rounded-2xl overflow-hidden border-2 border-primary/40 shadow-[0_0_12px_hsl(var(--primary)/0.25)] bg-card">
                     <img
                       src={p.image_url || ffTopup}
                       alt={p.name}
@@ -51,11 +51,9 @@ const ProductGrid = () => {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="px-2 py-2.5">
-                    <p className="text-[11px] font-bold text-foreground text-center leading-tight line-clamp-2">
-                      {p.name}
-                    </p>
-                  </div>
+                  <p className="text-[12px] font-bold text-foreground mt-2 leading-tight line-clamp-2 px-1">
+                    {p.name}
+                  </p>
                 </button>
               ))}
           </div>
