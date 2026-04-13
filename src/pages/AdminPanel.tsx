@@ -92,7 +92,17 @@ const AdminPanel = () => {
     enabled: !!user,
   });
 
-  const { data: orders, refetch: refetchOrders } = useQuery({
+  const { data: autoApis } = useQuery({
+    queryKey: ["admin-auto-apis"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("auto_apis").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+
     queryKey: ["admin-orders"],
     queryFn: async () => {
       const { data, error } = await supabase
