@@ -45,22 +45,27 @@ Deno.serve(async (req) => {
     try {
       fields = JSON.parse(order.game_id);
     } catch {
-      fields = { game_id: order.game_id };
+      fields = { uid: order.game_id };
     }
 
-    // Build request to external API
-    const apiUrl = autoApi.base_url.startsWith("http") ? autoApi.base_url : `https://${autoApi.base_url}`;
+    // Build API URL - ensure proper format
+    const baseUrl = autoApi.base_url.startsWith("http") ? autoApi.base_url : `https://${autoApi.base_url}`;
+    const apiUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
     
+    // Build payload matching the external API's expected format
     const payload = {
       api_key: autoApi.api_key,
+      order_id: order.id,
       product_variation_name: pkg.product_variation_name || pkg.name,
-      ...fields,
+      uid: fields.uid || fields.game_id || order.game_id,
+      status: "Processing",
+      order_time: new Date().toISOString(),
     };
 
-    console.log("Auto topup request:", { url: apiUrl, payload: { ...payload, api_key: "***" } });
+    console.log("Auto topup request:", { url: `${apiUrl}/webhook/website/order`, payload: { ...payload, api_key: "***" } });
 
-    // Forward to external API
-    const extResponse = await fetch(`${apiUrl}/api/topup`, {
+    // Forward to external API - Main endpoint: POST /webhook/website/order
+    const extResponse = await fetch(`${apiUrl}/webhook/website/order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
