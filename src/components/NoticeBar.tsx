@@ -12,7 +12,7 @@ const NoticeBar = () => {
   const text = settings.notice_text || "১৮ বছরের নিচে অর্ডার করবেন না।";
 
   return (
-    <div className="bg-primary text-primary-foreground max-w-lg mx-auto">
+    <div className="bg-primary text-primary-foreground max-w-lg mx-auto px-3">
       <div className="relative px-4 py-3">
         <p className="text-[15px] font-black mb-1.5">Notice:</p>
         <p className="text-[13px] leading-relaxed font-medium pr-8">{text}</p>
