@@ -485,6 +485,25 @@ const AdminPanel = () => {
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Image URL</label><Input value={pImageUrl} onChange={(e) => setPImageUrl(e.target.value)} className="h-9 text-[13px]" /></div>
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort Order</label><Input type="number" value={pSortOrder} onChange={(e) => setPSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
                 </div>
+                {/* Custom Fields */}
+                <div className="mt-3 p-3 bg-secondary rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] font-bold text-foreground">User Input Fields</label>
+                    <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => setPCustomFields([...pCustomFields, {key: "", label: "", placeholder: ""}])}>
+                      <Plus className="w-3 h-3 mr-1" /> Add Field
+                    </Button>
+                  </div>
+                  {pCustomFields.map((f, i) => (
+                    <div key={i} className="grid grid-cols-3 gap-1.5 items-end">
+                      <div><label className="text-[10px] text-muted-foreground">Key</label><Input value={f.key} onChange={(e) => { const nf = [...pCustomFields]; nf[i].key = e.target.value; setPCustomFields(nf); }} placeholder="uid" className="h-8 text-[11px]" /></div>
+                      <div><label className="text-[10px] text-muted-foreground">Label</label><Input value={f.label} onChange={(e) => { const nf = [...pCustomFields]; nf[i].label = e.target.value; setPCustomFields(nf); }} placeholder="আপনার UID লিখুন" className="h-8 text-[11px]" /></div>
+                      <div className="flex gap-1">
+                        <Input value={f.placeholder} onChange={(e) => { const nf = [...pCustomFields]; nf[i].placeholder = e.target.value; setPCustomFields(nf); }} placeholder="Placeholder" className="h-8 text-[11px] flex-1" />
+                        {pCustomFields.length > 1 && <button onClick={() => setPCustomFields(pCustomFields.filter((_, j) => j !== i))} className="p-1 active:opacity-75"><Trash2 className="w-3 h-3 text-destructive" /></button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <div className="flex gap-2 mt-3">
                   <Button onClick={() => saveProduct.mutate()} disabled={!pName} size="sm">{editingProduct ? "Update" : "Add"}</Button>
                   {editingProduct && <Button variant="outline" size="sm" onClick={resetProductForm}>Cancel</Button>}
