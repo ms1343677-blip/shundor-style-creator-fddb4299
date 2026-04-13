@@ -106,7 +106,7 @@ const AdminPanel = () => {
     enabled: !!user,
   });
 
-  const { data: userRoles } = useQuery({
+  const { data: userRoles, refetch: refetchRoles } = useQuery({
     queryKey: ["admin-user-roles"],
     queryFn: async () => {
       const { data, error } = await supabase.from("user_roles").select("*");
@@ -116,7 +116,7 @@ const AdminPanel = () => {
     enabled: !!user,
   });
 
-  const { data: wallets } = useQuery({
+  const { data: wallets, refetch: refetchWallets } = useQuery({
     queryKey: ["admin-wallets"],
     queryFn: async () => {
       const { data, error } = await supabase.from("wallets").select("*");
@@ -125,6 +125,21 @@ const AdminPanel = () => {
     },
     enabled: !!user,
   });
+
+  const { data: profiles, refetch: refetchProfiles } = useQuery({
+    queryKey: ["admin-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // User management state
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [addBalanceAmount, setAddBalanceAmount] = useState("");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
 
   // Load settings into form
   useEffect(() => {
