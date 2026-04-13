@@ -31,6 +31,7 @@ const AdminPanel = () => {
   const [pSubCategory, setPSubCategory] = useState("Top up");
   const [pImageUrl, setPImageUrl] = useState("");
   const [pSortOrder, setPSortOrder] = useState(0);
+  const [pCustomFields, setPCustomFields] = useState<{key: string; label: string; placeholder: string}[]>([{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}]);
 
   const [pkgName, setPkgName] = useState("");
   const [pkgPrice, setPkgPrice] = useState("");
@@ -211,7 +212,7 @@ const AdminPanel = () => {
   // Product mutations
   const saveProduct = useMutation({
     mutationFn: async () => {
-      const payload: any = { name: pName, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder, category_id: pCategoryId || null };
+      const payload: any = { name: pName, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder, category_id: pCategoryId || null, custom_fields: JSON.stringify(pCustomFields) };
       // Keep old category text for backward compat
       const selectedCat = categories?.find((c: any) => c.id === pCategoryId);
       payload.category = selectedCat?.name || "Other";
@@ -307,11 +308,11 @@ const AdminPanel = () => {
     },
   });
 
-  const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); };
+  const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); setPCustomFields([{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}]); };
   const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); setPkgAutoTopup(false); setPkgAutoApiId(""); setPkgVariationName(""); };
   const resetBannerForm = () => { setEditingBanner(null); setBannerTitle(""); setBannerImageUrl(""); setBannerLinkUrl(""); setBannerSortOrder(0); };
 
-  const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategoryId(p.category_id || ""); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); };
+  const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategoryId(p.category_id || ""); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); setPCustomFields(typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : (p.custom_fields || [{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}])); };
   const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); setPkgAutoTopup(p.auto_topup_enabled || false); setPkgAutoApiId(p.auto_api_id || ""); setPkgVariationName(p.product_variation_name || ""); };
   const startEditBanner = (b: any) => { setEditingBanner(b); setBannerTitle(b.title); setBannerImageUrl(b.image_url); setBannerLinkUrl(b.link_url || ""); setBannerSortOrder(b.sort_order); };
 
