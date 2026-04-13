@@ -529,6 +529,28 @@ const AdminPanel = () => {
                     <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Price</label><Input type="number" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} className="h-9 text-[13px]" /></div>
                     <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort</label><Input type="number" value={pkgSortOrder} onChange={(e) => setPkgSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
                   </div>
+                  {/* Auto Topup Settings */}
+                  <div className="mt-3 p-3 bg-secondary rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[12px] font-bold text-foreground flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-primary" /> Auto Topup</label>
+                      <Switch checked={pkgAutoTopup} onCheckedChange={setPkgAutoTopup} />
+                    </div>
+                    {pkgAutoTopup && (
+                      <>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground mb-0.5 block">Select Auto API</label>
+                          <select value={pkgAutoApiId} onChange={(e) => setPkgAutoApiId(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card text-foreground h-9">
+                            <option value="">Select API</option>
+                            {autoApis?.map((api: any) => <option key={api.id} value={api.id}>{api.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground mb-0.5 block">Product Variation Name</label>
+                          <Input value={pkgVariationName} onChange={(e) => setPkgVariationName(e.target.value)} placeholder="25 Diamond" className="h-9 text-[13px]" />
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <div className="flex gap-2 mt-3">
                     <Button onClick={() => savePackage.mutate()} disabled={!pkgName || !pkgPrice} size="sm">{editingPackage ? "Update" : "Add"}</Button>
                     {editingPackage && <Button variant="outline" size="sm" onClick={resetPackageForm}>Cancel</Button>}
@@ -542,7 +564,7 @@ const AdminPanel = () => {
                     <div key={pkg.id} className="px-4 py-2.5 flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-medium text-foreground">{pkg.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{pkg.products?.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{pkg.products?.name}{pkg.auto_topup_enabled && <span className="ml-1 text-primary">⚡ Auto</span>}</p>
                       </div>
                       <span className="text-[13px] font-bold text-primary">৳{pkg.price}</span>
                       <Switch checked={pkg.is_active} onCheckedChange={(v) => togglePackage.mutate({ id: pkg.id, is_active: v })} />
