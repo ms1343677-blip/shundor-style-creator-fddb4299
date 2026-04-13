@@ -13,66 +13,76 @@ const Footer = () => {
     <footer className="bg-footer text-footer-foreground pb-16">
       <div className="max-w-lg mx-auto px-4 py-6">
         {/* STAY CONNECTED */}
-        <h3 className="text-[20px] font-black text-footer-foreground mb-2">STAY CONNECTED</h3>
-        <p className="text-[12px] text-footer-foreground/60 mb-4 leading-relaxed">
+        <h3 className="text-[20px] font-black text-white mb-2">STAY CONNECTED</h3>
+        <p className="text-[12px] text-white/60 mb-4 leading-relaxed">
           কোনো সমস্যায় পড়লে হোয়াটসঅ্যাপ এ যোগাযোগ করবেন। তাহলে দ্রুত সমাধান পেয়ে যাবেন।
         </p>
 
         {/* Social Icons */}
         <div className="flex gap-3 mb-8">
-          <a href={fbLink} className="w-12 h-12 rounded-xl bg-footer-foreground/10 flex items-center justify-center active:opacity-70">
-            <Facebook className="w-5 h-5 text-footer-foreground" />
+          <a href={fbLink} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center active:opacity-70">
+            <Facebook className="w-5 h-5 text-white" />
           </a>
-          <a href="#" className="w-12 h-12 rounded-xl bg-footer-foreground/10 flex items-center justify-center active:opacity-70">
-            <Instagram className="w-5 h-5 text-footer-foreground" />
+          <a href="#" className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center active:opacity-70">
+            <Instagram className="w-5 h-5 text-white" />
           </a>
-          <a href="#" className="w-12 h-12 rounded-xl bg-footer-foreground/10 flex items-center justify-center active:opacity-70">
-            <Youtube className="w-5 h-5 text-footer-foreground" />
+          <a href="#" className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center active:opacity-70">
+            <Youtube className="w-5 h-5 text-white" />
           </a>
-          <a href="#" className="w-12 h-12 rounded-xl bg-footer-foreground/10 flex items-center justify-center active:opacity-70">
-            <Mail className="w-5 h-5 text-footer-foreground" />
+          <a href="#" className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center active:opacity-70">
+            <Mail className="w-5 h-5 text-white" />
           </a>
         </div>
 
         {/* SUPPORT CENTER */}
-        <h3 className="text-[20px] font-black text-footer-foreground mb-4">SUPPORT CENTER</h3>
+        <h3 className="text-[20px] font-black text-white mb-4">SUPPORT CENTER</h3>
 
         <div className="space-y-3 mb-6">
           {/* WhatsApp */}
           <a
             href={waNum ? `https://wa.me/${waNum.replace(/\D/g, "")}` : "#"}
-            className="flex items-center gap-4 bg-footer-foreground/8 rounded-xl p-4 active:opacity-70"
+            className="flex items-center gap-4 bg-white/8 rounded-xl p-4 active:opacity-70"
           >
             <div className="w-10 h-10 rounded-full bg-[hsl(145,70%,40%)] flex items-center justify-center shrink-0">
               <Phone className="w-5 h-5 text-white" />
             </div>
-            <div className="border-l border-footer-foreground/20 pl-4">
-              <p className="text-[12px] font-bold text-footer-foreground">Help line [{hours}]</p>
-              <p className="text-[13px] text-footer-foreground/70">Whatsapp HelpLine</p>
+            <div className="border-l border-white/20 pl-4">
+              <p className="text-[12px] font-bold text-white">Help line [{hours}]</p>
+              <p className="text-[13px] text-white/70">Whatsapp HelpLine</p>
             </div>
           </a>
 
           {/* Telegram */}
           <a
             href={tgLink}
-            className="flex items-center gap-4 bg-footer-foreground/8 rounded-xl p-4 active:opacity-70"
+            className="flex items-center gap-4 bg-white/8 rounded-xl p-4 active:opacity-70"
           >
             <div className="w-10 h-10 rounded-full bg-[hsl(200,80%,50%)] flex items-center justify-center shrink-0">
               <Send className="w-5 h-5 text-white" />
             </div>
-            <div className="border-l border-footer-foreground/20 pl-4">
-              <p className="text-[12px] font-bold text-footer-foreground">Help line [{hours}]</p>
-              <p className="text-[13px] text-footer-foreground/70">টেলিগ্রামে সাপোর্ট</p>
+            <div className="border-l border-white/20 pl-4">
+              <p className="text-[12px] font-bold text-white">Help line [{hours}]</p>
+              <p className="text-[13px] text-white/70">টেলিগ্রামে সাপোর্ট</p>
             </div>
           </a>
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-footer-foreground/10 pt-4 text-center">
-          <p className="text-[12px] text-footer-foreground/50">
-            © {siteName} 2026 | All Rights Reserved | Developed by
+        <div className="border-t border-white/10 pt-4 text-center">
+          <p className="text-[12px] text-white/70">
+            © {siteName} {new Date().getFullYear()} | All Rights Reserved
           </p>
-          <p className="text-[14px] font-bold text-footer-foreground mt-0.5">Team Mahal</p>
+          <p className="text-[12px] text-white/70 mt-1">
+            Developed by{" "}
+            <a
+              href="https://wa.me/+8801858039475?text=HI%2C%20I%20need%20develop%20an%20website%20like%20RG%20BAZZER"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white font-bold hover:underline"
+            >
+              Team Saiful
+            </a>
+          </p>
         </div>
       </div>
     </footer>
