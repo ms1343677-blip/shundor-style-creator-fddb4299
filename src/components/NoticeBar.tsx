@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 
 const NoticeBar = () => {
@@ -7,15 +7,16 @@ const NoticeBar = () => {
   if (!visible) return null;
 
   return (
-    <div className="bg-notice text-notice-foreground px-4 py-3 text-sm relative">
-      <button onClick={() => setVisible(false)} className="absolute top-2 right-2">
-        <X className="w-5 h-5" />
+    <div className="bg-notice text-notice-foreground px-4 py-2.5 text-sm relative max-w-lg mx-auto">
+      <button onClick={() => setVisible(false)} className="absolute top-2.5 right-3 active:scale-95">
+        <X className="w-4 h-4" />
       </button>
-      <p className="font-bold mb-1">Notice:</p>
-      <p className="text-xs leading-relaxed">
-        বাবা-মা বিকাশ থেকে টাকা চুরি করে কেউ অর্ডার করবেন না অর্ডার করলে কোন প্রকার ডাইমন্ড পাবেন না ,,
-        ১৮ বছরের নিচে কেউ অর্ডার করবেন না। যে কোন সমস্যায় WhatsApp 01858039475
-      </p>
+      <div className="flex items-start gap-2 pr-6">
+        <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+        <p className="text-xs leading-relaxed font-medium">
+          বাবা-মা বিকাশ থেকে টাকা চুরি করে কেউ অর্ডার করবেন না। ১৮ বছরের নিচে কেউ অর্ডার করবেন না। সমস্যায় WhatsApp 01858039475
+        </p>
+      </div>
     </div>
   );
 };
