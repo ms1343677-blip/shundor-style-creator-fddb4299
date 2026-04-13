@@ -1134,6 +1134,11 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
 // Payment Tab Component
 const PaymentTab = ({ user }: { user: any }) => {
   const queryClient = useQueryClient();
+  const [editingPH, setEditingPH] = useState<any>(null);
+  const [phSender, setPhSender] = useState("");
+  const [phTrxId, setPhTrxId] = useState("");
+  const [phAmount, setPhAmount] = useState("");
+  const [phPhone, setPhPhone] = useState("");
 
   const { data: siteSettings } = useQuery({
     queryKey: ["admin-site-settings"],
