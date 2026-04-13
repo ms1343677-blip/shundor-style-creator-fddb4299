@@ -276,6 +276,80 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_messages: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          is_used: boolean
+          phone_number: string | null
+          raw_message: string
+          sender: string
+          transaction_id: string | null
+          updated_at: string
+          used_for_order_id: string | null
+          webhook_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          is_used?: boolean
+          phone_number?: string | null
+          raw_message?: string
+          sender?: string
+          transaction_id?: string | null
+          updated_at?: string
+          used_for_order_id?: string | null
+          webhook_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          is_used?: boolean
+          phone_number?: string | null
+          raw_message?: string
+          sender?: string
+          transaction_id?: string | null
+          updated_at?: string
+          used_for_order_id?: string | null
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_messages_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "sms_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_webhooks: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number

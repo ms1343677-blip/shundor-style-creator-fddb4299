@@ -9,11 +9,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X,
-  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen
+  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings";
+type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -316,6 +316,7 @@ const AdminPanel = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
+    { id: "webhook-sms", label: "Webhook SMS", icon: MessageSquare },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -326,6 +327,8 @@ const AdminPanel = () => {
     { key: "whatsapp_number", label: "WhatsApp Number", type: "text" },
     { key: "telegram_link", label: "Telegram Link", type: "text" },
     { key: "facebook_link", label: "Facebook Link", type: "text" },
+    { key: "bkash_number", label: "bKash Number", type: "text" },
+    { key: "nagad_number", label: "Nagad Number", type: "text" },
     { key: "support_hours", label: "Support Hours", type: "text" },
     { key: "background_color", label: "Background Color (HSL)", type: "color" },
     { key: "primary_color", label: "Primary Color (HSL)", type: "color" },
@@ -753,6 +756,9 @@ const AdminPanel = () => {
             </div>
           )}
 
+          {/* WEBHOOK SMS */}
+          {activeTab === "webhook-sms" && <WebhookSmsTab user={user} />}
+
           {/* SETTINGS */}
           {activeTab === "settings" && (
             <div className="space-y-3">
@@ -829,6 +835,163 @@ const AdminPanel = () => {
           )}
         </div>
       </main>
+    </div>
+  );
+};
+
+// Webhook SMS Tab Component
+const WebhookSmsTab = ({ user }: { user: any }) => {
+  const queryClient = useQueryClient();
+  const [viewMessage, setViewMessage] = useState<any>(null);
+
+  const { data: webhooks, refetch: refetchWebhooks } = useQuery({
+    queryKey: ["admin-sms-webhooks"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sms_webhooks").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: smsMessages, refetch: refetchMessages } = useQuery({
+    queryKey: ["admin-sms-messages"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sms_messages").select("*").order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const generateToken = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let token = "";
+    for (let i = 0; i < 24; i++) token += chars.charAt(Math.floor(Math.random() * chars.length));
+    return token;
+  };
+
+  const createWebhook = async () => {
+    const token = generateToken();
+    const { error } = await supabase.from("sms_webhooks").insert({ token });
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    refetchWebhooks();
+    toast({ title: "নতুন Webhook তৈরি হয়েছে!" });
+  };
+
+  const deleteWebhook = async (id: string) => {
+    const { error } = await supabase.from("sms_webhooks").delete().eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    refetchWebhooks();
+  };
+
+  const toggleWebhook = async (id: string, is_active: boolean) => {
+    const { error } = await supabase.from("sms_webhooks").update({ is_active }).eq("id", id);
+    if (error) return;
+    refetchWebhooks();
+  };
+
+  const regenerateToken = async (id: string) => {
+    const token = generateToken();
+    const { error } = await supabase.from("sms_webhooks").update({ token }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    refetchWebhooks();
+    toast({ title: "টোকেন রিজেনারেট হয়েছে!" });
+  };
+
+  const getWebhookUrl = (token: string) => {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    return `https://${projectId}.supabase.co/functions/v1/store-sms?token=${token}`;
+  };
+
+  const copyUrl = (token: string) => {
+    navigator.clipboard.writeText(getWebhookUrl(token));
+    toast({ title: "URL কপি হয়েছে!" });
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Webhook URLs */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" /> Webhook URLs
+          </h3>
+          <Button size="sm" onClick={createWebhook}><Plus className="w-3.5 h-3.5 mr-1" /> New Webhook</Button>
+        </div>
+        <div className="space-y-2">
+          {webhooks?.map((wh: any) => (
+            <div key={wh.id} className="bg-secondary rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${wh.is_active ? "bg-green-500" : "bg-red-500"}`} />
+                <span className="text-[11px] text-muted-foreground flex-1 font-mono truncate">{getWebhookUrl(wh.token)}</span>
+              </div>
+              <div className="flex gap-1.5">
+                <button onClick={() => copyUrl(wh.token)} className="h-7 px-2.5 rounded-md text-[10px] font-semibold border border-border text-muted-foreground active:opacity-75 flex items-center gap-1">
+                  <Copy className="w-3 h-3" /> Copy
+                </button>
+                <button onClick={() => regenerateToken(wh.id)} className="h-7 px-2.5 rounded-md text-[10px] font-semibold border border-border text-muted-foreground active:opacity-75 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Regenerate
+                </button>
+                <Switch checked={wh.is_active} onCheckedChange={(v) => toggleWebhook(wh.id, v)} />
+                <button onClick={() => deleteWebhook(wh.id)} className="p-1.5 active:bg-destructive/10 rounded-lg ml-auto">
+                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                </button>
+              </div>
+            </div>
+          ))}
+          {!webhooks?.length && <p className="text-center text-muted-foreground text-[12px] py-4">No webhooks. Click "New Webhook" to create one.</p>}
+        </div>
+      </div>
+
+      {/* SMS Messages */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
+          <h3 className="text-[13px] font-bold text-foreground">Store Messages ({smsMessages?.length || 0})</h3>
+          <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+        </div>
+        <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
+          {smsMessages?.map((msg: any) => (
+            <div key={msg.id} className="px-4 py-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                  msg.sender === "bKash" ? "bg-[#E2136E]/10 text-[#E2136E]" :
+                  msg.sender === "Nagad" ? "bg-[#F6921E]/10 text-[#F6921E]" :
+                  "bg-muted text-muted-foreground"
+                }`}>{msg.sender || "Unknown"}</span>
+                {msg.is_used && <span className="text-[10px] px-2 py-0.5 rounded bg-green-500/10 text-green-600 font-bold">Used</span>}
+                <span className="text-[10px] text-muted-foreground ml-auto">{new Date(msg.created_at).toLocaleString()}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-[11px] mb-1">
+                <div>
+                  <span className="text-muted-foreground">Phone: </span>
+                  <span className="font-semibold text-foreground">{msg.phone_number || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">TrxID: </span>
+                  <span className="font-semibold text-foreground font-mono">{msg.transaction_id || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Amount: </span>
+                  <span className="font-bold text-primary">৳{msg.amount || 0}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewMessage(viewMessage?.id === msg.id ? null : msg)}
+                className="text-[10px] text-primary flex items-center gap-1"
+              >
+                <Eye className="w-3 h-3" /> {viewMessage?.id === msg.id ? "Hide" : "View"} Full Message
+              </button>
+              {viewMessage?.id === msg.id && (
+                <div className="mt-2 bg-secondary rounded-lg p-2 text-[11px] text-foreground whitespace-pre-wrap break-all">
+                  {msg.raw_message}
+                </div>
+              )}
+            </div>
+          ))}
+          {!smsMessages?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No messages received yet</div>}
+        </div>
+      </div>
     </div>
   );
 };

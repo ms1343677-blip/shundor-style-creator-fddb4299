@@ -33,18 +33,12 @@ const AddMoney = () => {
     const amt = parseFloat(amount);
     if (!amt || amt < 10) { toast({ title: "ন্যূনতম ১০ টাকা দিন", variant: "destructive" }); return; }
 
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("uddoktapay", {
-        body: { amount: amt, type: "add_money", redirect_url: window.location.origin },
-      });
-      if (error) throw error;
-      if (data?.payment_url) window.location.href = data.payment_url;
-    } catch (err: any) {
-      toast({ title: "ত্রুটি", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    // Navigate to manual payment page
+    const params = new URLSearchParams({
+      amount: String(amt),
+      type: "add_money",
+    });
+    navigate(`/manual-payment?${params.toString()}`);
   };
 
   return (
