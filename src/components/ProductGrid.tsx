@@ -21,38 +21,40 @@ const ProductGrid = () => {
 
   if (!products || products.length === 0) {
     return (
-      <section className="px-4 py-6 max-w-lg mx-auto text-center text-muted-foreground text-sm">
+      <section className="px-4 py-8 max-w-lg mx-auto text-center text-muted-foreground text-sm">
         কোনো প্রোডাক্ট নেই। অ্যাডমিন প্যানেল থেকে প্রোডাক্ট যোগ করুন।
       </section>
     );
   }
 
-  // Group by category
   const categories = [...new Set(products.map((p) => p.category))];
 
   return (
     <div>
       {categories.map((cat) => (
-        <section key={cat} className="px-4 py-6 max-w-lg mx-auto">
-          <h2 className="text-xl font-bold text-center text-foreground mb-5">{cat}</h2>
-          <div className="grid grid-cols-3 gap-3">
+        <section key={cat} className="px-4 py-5 max-w-lg mx-auto">
+          <h2 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+            <span className="w-1 h-5 bg-primary rounded-full" />
+            {cat}
+          </h2>
+          <div className="grid grid-cols-3 gap-2.5">
             {products
               .filter((p) => p.category === cat)
               .map((p) => (
                 <button
                   key={p.id}
                   onClick={() => navigate(`/product/${p.id}`)}
-                  className="bg-card rounded-xl overflow-hidden shadow-sm border border-border hover:shadow-md transition-shadow group"
+                  className="bg-card rounded-xl overflow-hidden border border-border active:scale-[0.97] active:bg-muted"
                 >
-                  <div className="aspect-square overflow-hidden">
+                  <div className="aspect-square overflow-hidden bg-muted">
                     <img
                       src={p.image_url || ffTopup}
                       alt={p.name}
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      className="w-full h-full object-cover"
                     />
                   </div>
-                  <p className="text-xs font-medium text-foreground px-2 py-2 text-center leading-tight">
+                  <p className="text-[11px] font-semibold text-foreground px-2 py-2 text-center leading-tight line-clamp-2">
                     {p.name}
                   </p>
                 </button>

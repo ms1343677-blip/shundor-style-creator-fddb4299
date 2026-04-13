@@ -7,7 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import heroBanner from "@/assets/hero-banner.jpg";
 
 const Index = () => (
-  <div className="min-h-screen bg-background pb-16">
+  <div className="min-h-screen bg-background pb-14">
     <Header />
     <NoticeBar />
     <div className="max-w-lg mx-auto">
