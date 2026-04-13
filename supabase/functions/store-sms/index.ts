@@ -137,18 +137,21 @@ Deno.serve(async (req) => {
     const provider = parsed.sender;
 
     if (parsed.sms_balance !== null && (provider === "bKash" || provider === "Nagad")) {
-      // Get current tracked balance
       const { data: tracker } = await supabaseAdmin.from("balance_tracker").select("*").eq("provider", provider).maybeSingle();
 
       if (tracker) {
-        const expectedBalance = Number(tracker.last_balance) + parsed.amount;
-        // Allow small tolerance (0.5 tk)
-        if (Math.abs(parsed.sms_balance - expectedBalance) > 0.5) {
-          // Balance mismatch → pending
-          status = "pending";
+        const lastBal = Number(tracker.last_balance);
+        if (lastBal === 0) {
+          // Balance was reset to 0 — accept this SMS as the new baseline
+          await supabaseAdmin.from("balance_tracker").update({ last_balance: parsed.sms_balance, total_received: parsed.amount }).eq("provider", provider);
+          status = "verified";
         } else {
-          // Balance matches → update tracker
-          await supabaseAdmin.from("balance_tracker").update({ last_balance: parsed.sms_balance }).eq("provider", provider);
+          const expectedBalance = lastBal + parsed.amount;
+          if (Math.abs(parsed.sms_balance - expectedBalance) > 0.5) {
+            status = "pending";
+          } else {
+            await supabaseAdmin.from("balance_tracker").update({ last_balance: parsed.sms_balance }).eq("provider", provider);
+          }
         }
       } else {
         // First time: just set the balance

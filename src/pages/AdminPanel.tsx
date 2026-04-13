@@ -871,7 +871,7 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
   const { data: smsMessages, refetch: refetchMessages } = useQuery({
     queryKey: ["admin-sms-messages"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sms_messages").select("*").order("created_at", { ascending: false }).limit(100);
+      const { data, error } = await supabase.from("sms_messages").select("*").eq("is_used", false).order("created_at", { ascending: false }).limit(100);
       if (error) throw error;
       return data;
     },
@@ -1296,7 +1296,19 @@ const PaymentTab = ({ user }: { user: any }) => {
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
           <h3 className="text-[13px] font-bold text-foreground">Payment History ({paymentHistory?.length || 0})</h3>
-          <button onClick={() => refetchHistory()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          <div className="flex gap-1.5">
+            <button onClick={() => refetchHistory()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+            {(paymentHistory?.length || 0) > 0 && (
+              <button onClick={async () => {
+                const { error } = await supabase.from("payment_history").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+                refetchHistory();
+                toast({ title: "সব Payment History ডিলিট হয়েছে!" });
+              }} className="h-7 px-2 rounded-md text-[10px] font-semibold border border-destructive/30 text-destructive active:opacity-75 flex items-center gap-1">
+                <Trash2 className="w-3 h-3" /> Delete All
+              </button>
+            )}
+          </div>
         </div>
         <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
           {paymentHistory?.map((ph: any) => (
@@ -1314,6 +1326,16 @@ const PaymentTab = ({ user }: { user: any }) => {
                 <div><span className="text-muted-foreground">Phone: </span><span className="font-semibold text-foreground">{ph.phone_number || "—"}</span></div>
                 <div><span className="text-muted-foreground">TrxID: </span><span className="font-semibold text-foreground font-mono">{ph.transaction_id || "—"}</span></div>
                 <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-primary">৳{ph.amount || 0}</span></div>
+              </div>
+              <div className="flex items-center gap-2 mt-1.5">
+                <button onClick={async () => {
+                  const { error } = await supabase.from("payment_history").delete().eq("id", ph.id);
+                  if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+                  refetchHistory();
+                  toast({ title: "ডিলিট হয়েছে!" });
+                }} className="text-[10px] text-destructive flex items-center gap-1 active:opacity-75">
+                  <Trash2 className="w-3 h-3" /> Delete
+                </button>
               </div>
             </div>
           ))}
