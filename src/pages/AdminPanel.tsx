@@ -9,11 +9,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X,
-  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save
+  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "dashboard" | "products" | "packages" | "orders" | "users" | "banners" | "settings";
+type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ const AdminPanel = () => {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   const [pName, setPName] = useState("");
-  const [pCategory, setPCategory] = useState("Game");
+  const [pCategoryId, setPCategoryId] = useState("");
   const [pSubCategory, setPSubCategory] = useState("Top up");
   const [pImageUrl, setPImageUrl] = useState("");
   const [pSortOrder, setPSortOrder] = useState(0);
@@ -42,6 +42,12 @@ const AdminPanel = () => {
   const [bannerSortOrder, setBannerSortOrder] = useState(0);
   const [editingBanner, setEditingBanner] = useState<any>(null);
 
+  // Category form
+  const [catName, setCatName] = useState("");
+  const [catImageUrl, setCatImageUrl] = useState("");
+  const [catSortOrder, setCatSortOrder] = useState(0);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+
   // Settings form
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>({});
 
@@ -50,6 +56,16 @@ const AdminPanel = () => {
   }, [isReady, user, navigate]);
 
   // Queries
+  const { data: categories, refetch: refetchCategories } = useQuery({
+    queryKey: ["admin-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categories").select("*").order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
     queryFn: async () => {
@@ -150,10 +166,41 @@ const AdminPanel = () => {
     }
   }, [siteSettings]);
 
-  // Mutations
+  // Category mutations
+  const saveCategory = useMutation({
+    mutationFn: async () => {
+      const payload = { name: catName, image_url: catImageUrl || null, sort_order: catSortOrder };
+      if (editingCategory) {
+        const { error } = await supabase.from("categories").update(payload).eq("id", editingCategory.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("categories").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); resetCategoryForm(); toast({ title: "সফল!" }); },
+  });
+
+  const deleteCategory = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("categories").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); },
+  });
+
+  const toggleCategory = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => { const { error } = await supabase.from("categories").update({ is_active }).eq("id", id); if (error) throw error; },
+    onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); },
+  });
+
+  const resetCategoryForm = () => { setEditingCategory(null); setCatName(""); setCatImageUrl(""); setCatSortOrder(0); };
+  const startEditCategory = (c: any) => { setEditingCategory(c); setCatName(c.name); setCatImageUrl(c.image_url || ""); setCatSortOrder(c.sort_order); };
+
+  // Product mutations
   const saveProduct = useMutation({
     mutationFn: async () => {
-      const payload = { name: pName, category: pCategory, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder };
+      const payload: any = { name: pName, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder, category_id: pCategoryId || null };
+      // Keep old category text for backward compat
+      const selectedCat = categories?.find((c: any) => c.id === pCategoryId);
+      payload.category = selectedCat?.name || "Other";
       if (editingProduct) {
         const { error } = await supabase.from("products").update(payload).eq("id", editingProduct.id);
         if (error) throw error;
@@ -246,11 +293,11 @@ const AdminPanel = () => {
     },
   });
 
-  const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategory("Game"); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); };
+  const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); };
   const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); };
   const resetBannerForm = () => { setEditingBanner(null); setBannerTitle(""); setBannerImageUrl(""); setBannerLinkUrl(""); setBannerSortOrder(0); };
 
-  const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategory(p.category); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); };
+  const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategoryId(p.category_id || ""); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); };
   const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); };
   const startEditBanner = (b: any) => { setEditingBanner(b); setBannerTitle(b.title); setBannerImageUrl(b.image_url); setBannerLinkUrl(b.link_url || ""); setBannerSortOrder(b.sort_order); };
 
@@ -263,6 +310,7 @@ const AdminPanel = () => {
 
   const sidebarItems: { id: Tab; label: string; icon: any }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "categories", label: "Categories", icon: FolderOpen },
     { id: "products", label: "Products", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
     { id: "orders", label: "Orders", icon: ShoppingCart },
@@ -297,6 +345,12 @@ const AdminPanel = () => {
     { label: "Teal", value: "180 60% 35%" },
     { label: "Dark", value: "220 30% 15%" },
   ];
+
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId || !categories) return "—";
+    const cat = categories.find((c: any) => c.id === categoryId);
+    return cat?.name || "—";
+  };
 
   return (
     <div className="min-h-screen bg-muted flex">
@@ -337,6 +391,7 @@ const AdminPanel = () => {
           {activeTab === "dashboard" && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               {[
+                { label: "Categories", value: categories?.length || 0, color: "text-accent" },
                 { label: "Products", value: products?.length || 0, color: "text-primary" },
                 { label: "Active Products", value: products?.filter((p) => p.is_active).length || 0, color: "text-success" },
                 { label: "Packages", value: packages?.length || 0, color: "text-accent" },
@@ -352,6 +407,44 @@ const AdminPanel = () => {
             </div>
           )}
 
+          {/* CATEGORIES */}
+          {activeTab === "categories" && (
+            <div className="space-y-3">
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> {editingCategory ? "Edit Category" : "Add Category"}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Name</label><Input value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Game" className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Image URL</label><Input value={catImageUrl} onChange={(e) => setCatImageUrl(e.target.value)} className="h-9 text-[13px]" /></div>
+                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort Order</label><Input type="number" value={catSortOrder} onChange={(e) => setCatSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <Button onClick={() => saveCategory.mutate()} disabled={!catName} size="sm">{editingCategory ? "Update" : "Add"}</Button>
+                  {editingCategory && <Button variant="outline" size="sm" onClick={resetCategoryForm}>Cancel</Button>}
+                </div>
+              </div>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-border"><h3 className="text-[13px] font-bold text-foreground">All Categories</h3></div>
+                <div className="divide-y divide-border">
+                  {categories?.map((c: any) => (
+                    <div key={c.id} className="px-4 py-2.5 flex items-center gap-2">
+                      {c.image_url && <img src={c.image_url} alt="" className="w-8 h-8 rounded-lg object-cover" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-foreground truncate">{c.name}</p>
+                        <p className="text-[10px] text-muted-foreground">Sort: {c.sort_order}</p>
+                      </div>
+                      <Switch checked={c.is_active} onCheckedChange={(v) => toggleCategory.mutate({ id: c.id, is_active: v })} />
+                      <button onClick={() => startEditCategory(c)} className="p-1.5 active:bg-secondary rounded-lg"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                      <button onClick={() => deleteCategory.mutate(c.id)} className="p-1.5 active:bg-destructive/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                    </div>
+                  ))}
+                  {!categories?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No categories</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* PRODUCTS */}
           {activeTab === "products" && (
             <div className="space-y-3">
@@ -361,7 +454,13 @@ const AdminPanel = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Name</label><Input value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Free Fire TopUp" className="h-9 text-[13px]" /></div>
-                  <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Category</label><Input value={pCategory} onChange={(e) => setPCategory(e.target.value)} className="h-9 text-[13px]" /></div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-0.5 block">Category</label>
+                    <select value={pCategoryId} onChange={(e) => setPCategoryId(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card text-foreground h-9">
+                      <option value="">Select Category</option>
+                      {categories?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sub Category</label><Input value={pSubCategory} onChange={(e) => setPSubCategory(e.target.value)} className="h-9 text-[13px]" /></div>
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Image URL</label><Input value={pImageUrl} onChange={(e) => setPImageUrl(e.target.value)} className="h-9 text-[13px]" /></div>
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort Order</label><Input type="number" value={pSortOrder} onChange={(e) => setPSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
@@ -374,12 +473,12 @@ const AdminPanel = () => {
               <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-border"><h3 className="text-[13px] font-bold text-foreground">All Products</h3></div>
                 <div className="divide-y divide-border">
-                  {products?.map((p) => (
+                  {products?.map((p: any) => (
                     <div key={p.id} className="px-4 py-2.5 flex items-center gap-2">
                       {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded-lg object-cover" />}
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-medium text-foreground truncate">{p.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{p.category}</p>
+                        <p className="text-[10px] text-muted-foreground">{getCategoryName(p.category_id)}</p>
                       </div>
                       <Switch checked={p.is_active} onCheckedChange={(v) => toggleProduct.mutate({ id: p.id, is_active: v })} />
                       <button onClick={() => startEditProduct(p)} className="p-1.5 active:bg-secondary rounded-lg"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
@@ -474,7 +573,6 @@ const AdminPanel = () => {
           {/* USERS */}
           {activeTab === "users" && (
             <div className="space-y-3">
-              {/* Search */}
               <div className="bg-card rounded-xl border border-border p-3">
                 <Input
                   placeholder="Search by email or name..."
@@ -484,7 +582,6 @@ const AdminPanel = () => {
                 />
               </div>
 
-              {/* User detail panel */}
               {selectedUser && (() => {
                 const profile = profiles?.find((p: any) => p.user_id === selectedUser);
                 const wallet = wallets?.find((w: any) => w.user_id === selectedUser);
@@ -514,8 +611,6 @@ const AdminPanel = () => {
                         <p className="font-semibold text-foreground">{role?.role || "user"}</p>
                       </div>
                     </div>
-
-                    {/* Add Balance */}
                     <div>
                       <label className="text-[11px] text-muted-foreground mb-1 block">Add Balance</label>
                       <div className="flex gap-2">
@@ -536,8 +631,6 @@ const AdminPanel = () => {
                         }}>Add</Button>
                       </div>
                     </div>
-
-                    {/* Change Role */}
                     <div>
                       <label className="text-[11px] text-muted-foreground mb-1 block">Change Role</label>
                       <div className="flex gap-1.5">
@@ -564,8 +657,6 @@ const AdminPanel = () => {
                         ))}
                       </div>
                     </div>
-
-                    {/* User Orders */}
                     {userOrders.length > 0 && (
                       <div>
                         <p className="text-[11px] text-muted-foreground mb-1">Orders ({userOrders.length})</p>
@@ -583,7 +674,6 @@ const AdminPanel = () => {
                 );
               })()}
 
-              {/* User List */}
               <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-border">
                   <h3 className="text-[13px] font-bold text-foreground">All Users ({profiles?.length || wallets?.length || 0})</h3>
@@ -666,7 +756,6 @@ const AdminPanel = () => {
           {/* SETTINGS */}
           {activeTab === "settings" && (
             <div className="space-y-3">
-              {/* General Settings */}
               <div className="bg-card rounded-xl border border-border p-4">
                 <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
                   <Bell className="w-4 h-4" /> General Settings
@@ -690,7 +779,6 @@ const AdminPanel = () => {
                       )}
                     </div>
                   ))}
-                  {/* Toggle fields */}
                   {settingsFields.filter(f => f.type === "toggle").map((field) => (
                     <div key={field.key} className="flex items-center justify-between py-1">
                       <label className="text-[12px] font-medium text-foreground">{field.label}</label>
@@ -703,7 +791,6 @@ const AdminPanel = () => {
                 </div>
               </div>
 
-              {/* Theme Colors */}
               <div className="bg-card rounded-xl border border-border p-4">
                 <h3 className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
                   <Palette className="w-4 h-4" /> Theme Colors
@@ -734,7 +821,6 @@ const AdminPanel = () => {
                 ))}
               </div>
 
-              {/* Save button */}
               <Button onClick={() => saveSettings.mutate()} className="w-full" disabled={saveSettings.isPending}>
                 <Save className="w-4 h-4 mr-2" />
                 {saveSettings.isPending ? "Saving..." : "Save All Settings"}
