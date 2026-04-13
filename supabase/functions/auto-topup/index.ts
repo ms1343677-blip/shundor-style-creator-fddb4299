@@ -53,10 +53,12 @@ Deno.serve(async (req) => {
     const apiUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
     
     // Build payload matching the external API's expected format
-    const payload = {
+    const variationName = pkg.product_variation_name || pkg.name;
+    const payload: Record<string, string> = {
       api_key: autoApi.api_key,
       order_id: order.id,
-      product_variation_name: pkg.product_variation_name || pkg.name,
+      product_variation_name: variationName,
+      diamond_quantity: variationName,
       uid: fields.uid || fields.game_id || order.game_id,
       status: "Processing",
       order_time: new Date().toISOString(),
