@@ -843,6 +843,11 @@ const AdminPanel = () => {
 const WebhookSmsTab = ({ user }: { user: any }) => {
   const queryClient = useQueryClient();
   const [viewMessage, setViewMessage] = useState<any>(null);
+  const [addSender, setAddSender] = useState("bKash");
+  const [addPhone, setAddPhone] = useState("");
+  const [addTrxId, setAddTrxId] = useState("");
+  const [addAmount, setAddAmount] = useState("");
+  const [addingMsg, setAddingMsg] = useState(false);
 
   const { data: webhooks, refetch: refetchWebhooks } = useQuery({
     queryKey: ["admin-sms-webhooks"],
