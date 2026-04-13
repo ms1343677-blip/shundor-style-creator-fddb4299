@@ -1053,19 +1053,41 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
 
       {/* SMS Messages */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
-          <h3 className="text-[13px] font-bold text-foreground">Store Messages ({smsMessages?.length || 0})</h3>
-          <div className="flex gap-1.5">
-            <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
-            {(smsMessages?.length || 0) > 0 && (
-              <button onClick={deleteAllMessages} className="h-7 px-2 rounded-md text-[10px] font-semibold border border-destructive/30 text-destructive active:opacity-75 flex items-center gap-1">
-                <Trash2 className="w-3 h-3" /> Delete All
+        <div className="px-4 py-2.5 border-b border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[13px] font-bold text-foreground">Store Messages ({smsMessages?.length || 0})</h3>
+            <div className="flex gap-1.5">
+              <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
+              {(smsMessages?.length || 0) > 0 && (
+                <button onClick={deleteAllMessages} className="h-7 px-2 rounded-md text-[10px] font-semibold border border-destructive/30 text-destructive active:opacity-75 flex items-center gap-1">
+                  <Trash2 className="w-3 h-3" /> Delete All
+                </button>
+              )}
+            </div>
+          </div>
+          {/* Filters */}
+          <div className="flex gap-1.5 flex-wrap">
+            {["All", "bKash", "Nagad", "Rocket"].map((s) => (
+              <button key={s} onClick={() => setFilterSender(s)}
+                className={`h-6 px-2.5 rounded-full text-[10px] font-semibold border ${filterSender === s ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border"}`}>
+                {s}
               </button>
-            )}
+            ))}
+            <span className="w-px bg-border mx-1" />
+            {["All", "verified", "pending", "rejected"].map((s) => (
+              <button key={s} onClick={() => setFilterStatus(s)}
+                className={`h-6 px-2.5 rounded-full text-[10px] font-semibold border capitalize ${filterStatus === s ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border"}`}>
+                {s === "All" ? "All Status" : s}
+              </button>
+            ))}
           </div>
         </div>
         <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
-          {smsMessages?.map((msg: any) => (
+          {smsMessages?.filter((msg: any) => {
+            if (filterSender !== "All" && msg.sender !== filterSender) return false;
+            if (filterStatus !== "All" && msg.status !== filterStatus) return false;
+            return true;
+          }).map((msg: any) => (
             <div key={msg.id} className="px-4 py-3">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
