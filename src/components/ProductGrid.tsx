@@ -33,7 +33,7 @@ const ProductGrid = () => {
     <div className="max-w-lg mx-auto">
       {categories.map((cat) => (
         <section key={cat} className="px-3 pt-5 pb-2">
-          <h2 className="text-center text-[17px] font-black text-foreground mb-4">{cat}</h2>
+          <h2 className="text-center text-[20px] font-black text-primary mb-4">{cat}</h2>
           <div className="grid grid-cols-3 gap-3">
             {products
               .filter((p) => p.category === cat)

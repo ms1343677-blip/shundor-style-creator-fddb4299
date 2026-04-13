@@ -12,12 +12,12 @@ const NoticeBar = () => {
   const text = settings.notice_text || "১৮ বছরের নিচে অর্ডার করবেন না।";
 
   return (
-    <div className="bg-notice text-notice-foreground max-w-lg mx-auto">
-      <div className="flex items-start gap-2 px-3 py-2.5 relative">
-        <span className="text-[13px] font-bold shrink-0">Notice:</span>
-        <p className="text-[11px] leading-relaxed font-medium flex-1 pr-5">{text}</p>
-        <button onClick={() => setVisible(false)} className="absolute right-2.5 top-2.5 active:opacity-60">
-          <X className="w-4 h-4" />
+    <div className="bg-primary text-primary-foreground max-w-lg mx-auto">
+      <div className="relative px-4 py-3">
+        <p className="text-[15px] font-black mb-1.5">Notice:</p>
+        <p className="text-[13px] leading-relaxed font-medium pr-8">{text}</p>
+        <button onClick={() => setVisible(false)} className="absolute right-3 top-3 active:opacity-60">
+          <X className="w-5 h-5" strokeWidth={2.5} />
         </button>
       </div>
     </div>

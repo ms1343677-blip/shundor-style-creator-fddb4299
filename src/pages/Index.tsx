@@ -43,33 +43,36 @@ const Index = () => {
       <Header />
       <NoticeBar />
       <div className="max-w-lg mx-auto">
-        {slides ? (
-          <div className="relative overflow-hidden">
-            <div
-              className="flex"
-              style={{ transform: `translateX(-${currentSlide * 100}%)`, transition: "transform 0.3s ease-in-out" }}
-            >
-              {slides.map((b: any) => (
-                <a key={b.id} href={b.link_url || "#"} className="w-full shrink-0">
-                  <img src={b.image_url} alt={b.title} className="w-full" />
-                </a>
-              ))}
-            </div>
-            {slides.length > 1 && (
-              <div className="flex justify-center gap-1.5 py-2">
-                {slides.map((_: any, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    className={`h-1.5 rounded-full transition-all ${i === currentSlide ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/30"}`}
-                  />
+        {/* Banner/Slider - full width, no padding */}
+        <div className="relative overflow-hidden">
+          {slides ? (
+            <>
+              <div
+                className="flex"
+                style={{ transform: `translateX(-${currentSlide * 100}%)`, transition: "transform 0.3s ease-in-out" }}
+              >
+                {slides.map((b: any) => (
+                  <a key={b.id} href={b.link_url || "#"} className="w-full shrink-0 block">
+                    <img src={b.image_url} alt={b.title} className="w-full block" />
+                  </a>
                 ))}
               </div>
-            )}
-          </div>
-        ) : (
-          <img src={heroBanner} alt="Free Fire Diamond TopUp" width={1200} height={600} className="w-full" />
-        )}
+              {slides.length > 1 && (
+                <div className="flex justify-center gap-1.5 py-2.5">
+                  {slides.map((_: any, i: number) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentSlide(i)}
+                      className={`rounded-full ${i === currentSlide ? "w-5 h-1.5 bg-foreground" : "w-1.5 h-1.5 bg-muted-foreground/40"}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <img src={heroBanner} alt="Free Fire Diamond TopUp" width={1200} height={600} className="w-full block" />
+          )}
+        </div>
       </div>
       <ProductGrid />
       <LatestOrders />
