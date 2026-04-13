@@ -14,7 +14,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import AutoApiTab from "@/components/admin/AutoApiTab";
 
-type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment";
+type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment" | "auto-api";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -34,6 +34,10 @@ const AdminPanel = () => {
 
   const [pkgName, setPkgName] = useState("");
   const [pkgPrice, setPkgPrice] = useState("");
+  const [pkgSortOrder, setPkgSortOrder] = useState(0);
+  const [pkgAutoTopup, setPkgAutoTopup] = useState(false);
+  const [pkgAutoApiId, setPkgAutoApiId] = useState("");
+  const [pkgVariationName, setPkgVariationName] = useState("");
   const [pkgSortOrder, setPkgSortOrder] = useState(0);
 
   // Banner form
