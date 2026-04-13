@@ -42,8 +42,8 @@ const Index = () => {
     <div className="min-h-screen bg-background pb-14">
       <Header />
       <NoticeBar />
-      <div className="max-w-lg mx-auto">
-        {/* Banner/Slider - full width, no padding */}
+      <div className="max-w-lg mx-auto mt-2">
+        {/* Banner/Slider */}
         <div className="relative overflow-hidden">
           {slides ? (
             <>
