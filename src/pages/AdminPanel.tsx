@@ -1166,23 +1166,48 @@ const PaymentTab = ({ user }: { user: any }) => {
     toast({ title: "পেমেন্ট নাম্বার সেভ হয়েছে!" });
   };
 
-  // Calculate balance from SMS since last reset
+  // Pending messages
+  const { data: pendingMessages, refetch: refetchPending } = useQuery({
+    queryKey: ["admin-pending-sms"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sms_messages").select("*").eq("status", "pending").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const bkashTracker = balanceData?.find((b: any) => b.provider === "bKash");
   const nagadTracker = balanceData?.find((b: any) => b.provider === "Nagad");
 
-  const bkashBalance = smsMessages
-    ?.filter((m: any) => m.sender === "bKash" && new Date(m.created_at) >= new Date(bkashTracker?.reset_at || 0))
-    .reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0;
-
-  const nagadBalance = smsMessages
-    ?.filter((m: any) => m.sender === "Nagad" && new Date(m.created_at) >= new Date(nagadTracker?.reset_at || 0))
-    .reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0;
+  const bkashBalance = bkashTracker?.last_balance || 0;
+  const nagadBalance = nagadTracker?.last_balance || 0;
 
   const resetBalance = async (provider: string) => {
-    const { error } = await supabase.from("balance_tracker").update({ reset_at: new Date().toISOString(), total_received: 0 }).eq("provider", provider);
+    const { error } = await supabase.from("balance_tracker").update({ reset_at: new Date().toISOString(), last_balance: 0, total_received: 0 }).eq("provider", provider);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     refetchBalance();
-    toast({ title: `${provider} ব্যালেন্স রিসেট হয়েছে!` });
+    toast({ title: `${provider} ব্যালেন্স রিসেট হয়েছে! এখন থেকে নতুন করে ট্র্যাক হবে।` });
+  };
+
+  const approvePending = async (msg: any) => {
+    // Approve: update balance_tracker and mark as verified
+    const provider = msg.sender;
+    if (msg.sms_balance !== null) {
+      await supabase.from("balance_tracker").update({ last_balance: msg.sms_balance }).eq("provider", provider);
+    }
+    await supabase.from("sms_messages").update({ status: "verified" }).eq("id", msg.id);
+    refetchPending();
+    refetchBalance();
+    queryClient.invalidateQueries({ queryKey: ["admin-sms-messages"] });
+    toast({ title: "মেসেজ ভেরিফাই হয়েছে এবং ব্যালেন্স আপডেট হয়েছে!" });
+  };
+
+  const rejectPending = async (msg: any) => {
+    await supabase.from("sms_messages").update({ status: "rejected" }).eq("id", msg.id);
+    refetchPending();
+    queryClient.invalidateQueries({ queryKey: ["admin-sms-messages"] });
+    toast({ title: "মেসেজ রিজেক্ট করা হয়েছে!" });
   };
 
   return (
