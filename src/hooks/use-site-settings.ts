@@ -23,6 +23,7 @@ export function useSiteSettings() {
   useEffect(() => {
     if (!settings) return;
     const root = document.documentElement;
+    if (settings.background_color) root.style.setProperty("--background", settings.background_color);
     if (settings.primary_color) root.style.setProperty("--primary", settings.primary_color);
     if (settings.notice_color) root.style.setProperty("--notice-bg", settings.notice_color);
     if (settings.nav_color) {
@@ -31,6 +32,7 @@ export function useSiteSettings() {
     }
     if (settings.footer_color) root.style.setProperty("--footer-bg", settings.footer_color);
     return () => {
+      root.style.removeProperty("--background");
       root.style.removeProperty("--primary");
       root.style.removeProperty("--notice-bg");
       root.style.removeProperty("--nav-bg");
