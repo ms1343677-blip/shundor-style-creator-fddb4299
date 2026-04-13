@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Package, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { Package, MessageSquare } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   pending: { label: "Pending", color: "bg-notice text-notice-foreground" },
@@ -66,6 +66,12 @@ const Orders = () => {
                       {status.label}
                     </span>
                   </div>
+                  {order.delivery_message && (
+                    <div className="mt-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                      <p className="text-[11px] text-foreground">{order.delivery_message}</p>
+                    </div>
+                  )}
                   <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
                     <span>ID: {order.game_id}</span>
                     <span>{new Date(order.created_at).toLocaleDateString("bn-BD")}</span>
