@@ -17,6 +17,7 @@ const ManualPayment = () => {
   const [trxId, setTrxId] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const amount = params.get("amount") || "0";
   const productId = params.get("product_id");
@@ -42,6 +43,7 @@ const ManualPayment = () => {
     }
 
     setLoading(true);
+    setErrorMsg("");
     try {
       const { data, error } = await supabase.functions.invoke("verify-manual-payment", {
         body: {
@@ -56,11 +58,14 @@ const ManualPayment = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      setErrorMsg("");
       toast({ title: "✅ " + (data?.message || "সফল!") });
       if (type === "add_money") navigate("/add-money");
       else navigate("/orders");
     } catch (err: any) {
-      toast({ title: "ত্রুটি", description: err.message, variant: "destructive" });
+      const msg = err.message || "কিছু একটা ভুল হয়েছে";
+      setErrorMsg(msg);
+      toast({ title: "ত্রুটি", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -123,6 +128,12 @@ const ManualPayment = () => {
             onChange={(e) => setTrxId(e.target.value)}
             className="text-[14px] h-12 font-mono"
           />
+          {errorMsg && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-center">
+              <p className="text-[13px] font-bold text-destructive">❌ দুঃখিত!</p>
+              <p className="text-[12px] text-destructive/80 mt-1">{errorMsg}</p>
+            </div>
+          )}
           <button
             onClick={handleVerify}
             disabled={loading || !trxId.trim()}
