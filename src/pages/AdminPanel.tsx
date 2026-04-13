@@ -263,8 +263,10 @@ const AdminPanel = () => {
   });
 
   const updateOrderStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+    mutationFn: async ({ id, status, delivery_message }: { id: string; status: string; delivery_message?: string }) => {
+      const update: any = { status };
+      if (delivery_message !== undefined) update.delivery_message = delivery_message;
+      const { error } = await supabase.from("orders").update(update).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => refetchOrders(),
@@ -599,37 +601,7 @@ const AdminPanel = () => {
           )}
 
           {/* ORDERS */}
-          {activeTab === "orders" && (
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-border"><h3 className="text-[13px] font-bold text-foreground">All Orders</h3></div>
-              <div className="divide-y divide-border">
-                {orders?.map((order: any) => (
-                  <div key={order.id} className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-foreground">{order.products?.name} — {order.packages?.name}</p>
-                        <p className="text-[10px] text-muted-foreground">Game ID: {order.game_id} · ৳{order.amount} · {order.payment_method}</p>
-                        <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
-                      </div>
-                      <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${
-                        order.status === "completed" ? "bg-success/15 text-success" :
-                        order.status === "cancelled" ? "bg-destructive/10 text-destructive" :
-                        order.status === "processing" ? "bg-primary/10 text-primary" :
-                        "bg-notice/20 text-notice-foreground"
-                      }`}>{order.status}</span>
-                      {order.status === "pending" && (
-                        <div className="flex gap-1">
-                          <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "completed" })} className="p-1.5 active:bg-success/10 rounded-lg"><Check className="w-4 h-4 text-success" /></button>
-                          <button onClick={() => updateOrderStatus.mutate({ id: order.id, status: "cancelled" })} className="p-1.5 active:bg-destructive/10 rounded-lg"><XCircle className="w-4 h-4 text-destructive" /></button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {!orders?.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No orders</div>}
-              </div>
-            </div>
-          )}
+          {activeTab === "orders" && <AdminOrdersTab orders={orders} updateOrderStatus={updateOrderStatus} />}
 
           {/* USERS */}
           {activeTab === "users" && (
