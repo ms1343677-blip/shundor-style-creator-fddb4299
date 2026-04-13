@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_apis: {
+        Row: {
+          api_key: string
+          base_url: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string
+          base_url: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          base_url?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       balance_tracker: {
         Row: {
           created_at: string
@@ -166,36 +196,52 @@ export type Database = {
       }
       packages: {
         Row: {
+          auto_api_id: string | null
+          auto_topup_enabled: boolean
           created_at: string
           id: string
           is_active: boolean
           name: string
           price: number
           product_id: string
+          product_variation_name: string
           sort_order: number
           updated_at: string
         }
         Insert: {
+          auto_api_id?: string | null
+          auto_topup_enabled?: boolean
           created_at?: string
           id?: string
           is_active?: boolean
           name: string
           price: number
           product_id: string
+          product_variation_name?: string
           sort_order?: number
           updated_at?: string
         }
         Update: {
+          auto_api_id?: string | null
+          auto_topup_enabled?: boolean
           created_at?: string
           id?: string
           is_active?: boolean
           name?: string
           price?: number
           product_id?: string
+          product_variation_name?: string
           sort_order?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "packages_auto_api_id_fkey"
+            columns: ["auto_api_id"]
+            isOneToOne: false
+            referencedRelation: "auto_apis"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "packages_product_id_fkey"
             columns: ["product_id"]
@@ -263,6 +309,7 @@ export type Database = {
           category: string
           category_id: string | null
           created_at: string
+          custom_fields: Json
           id: string
           image_url: string | null
           is_active: boolean
@@ -275,6 +322,7 @@ export type Database = {
           category?: string
           category_id?: string | null
           created_at?: string
+          custom_fields?: Json
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -287,6 +335,7 @@ export type Database = {
           category?: string
           category_id?: string | null
           created_at?: string
+          custom_fields?: Json
           id?: string
           image_url?: string | null
           is_active?: boolean

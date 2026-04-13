@@ -9,11 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   LayoutDashboard, Package, Layers, LogOut, Plus, Pencil, Trash2, Menu, X,
-  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye, Wallet, RotateCcw
+  ChevronRight, ShoppingCart, Check, XCircle, Settings, Image, Users, Bell, Palette, Save, FolderOpen, MessageSquare, RefreshCw, Copy, Eye, Wallet, RotateCcw, Zap, Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import AutoApiTab from "@/components/admin/AutoApiTab";
 
-type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment";
+type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment" | "auto-api";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -30,10 +31,14 @@ const AdminPanel = () => {
   const [pSubCategory, setPSubCategory] = useState("Top up");
   const [pImageUrl, setPImageUrl] = useState("");
   const [pSortOrder, setPSortOrder] = useState(0);
+  const [pCustomFields, setPCustomFields] = useState<{key: string; label: string; placeholder: string}[]>([{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}]);
 
   const [pkgName, setPkgName] = useState("");
   const [pkgPrice, setPkgPrice] = useState("");
   const [pkgSortOrder, setPkgSortOrder] = useState(0);
+  const [pkgAutoTopup, setPkgAutoTopup] = useState(false);
+  const [pkgAutoApiId, setPkgAutoApiId] = useState("");
+  const [pkgVariationName, setPkgVariationName] = useState("");
 
   // Banner form
   const [bannerTitle, setBannerTitle] = useState("");
@@ -79,9 +84,19 @@ const AdminPanel = () => {
   const { data: packages } = useQuery({
     queryKey: ["admin-packages", selectedProductId],
     queryFn: async () => {
-      let q = supabase.from("packages").select("*, products(name)").order("sort_order");
+      let q = supabase.from("packages").select("*, products(name), auto_apis(name)").order("sort_order");
       if (selectedProductId) q = q.eq("product_id", selectedProductId);
       const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: autoApis } = useQuery({
+    queryKey: ["admin-auto-apis"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("auto_apis").select("*").order("name");
       if (error) throw error;
       return data;
     },
@@ -197,7 +212,7 @@ const AdminPanel = () => {
   // Product mutations
   const saveProduct = useMutation({
     mutationFn: async () => {
-      const payload: any = { name: pName, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder, category_id: pCategoryId || null };
+      const payload: any = { name: pName, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder, category_id: pCategoryId || null, custom_fields: JSON.stringify(pCustomFields) };
       // Keep old category text for backward compat
       const selectedCat = categories?.find((c: any) => c.id === pCategoryId);
       payload.category = selectedCat?.name || "Other";
@@ -225,7 +240,7 @@ const AdminPanel = () => {
   const savePackage = useMutation({
     mutationFn: async () => {
       if (!selectedProductId && !editingPackage) return;
-      const payload = { name: pkgName, price: parseFloat(pkgPrice), sort_order: pkgSortOrder, product_id: editingPackage?.product_id || selectedProductId! };
+      const payload: any = { name: pkgName, price: parseFloat(pkgPrice), sort_order: pkgSortOrder, product_id: editingPackage?.product_id || selectedProductId!, auto_topup_enabled: pkgAutoTopup, auto_api_id: pkgAutoApiId || null, product_variation_name: pkgVariationName };
       if (editingPackage) {
         const { error } = await supabase.from("packages").update(payload).eq("id", editingPackage.id);
         if (error) throw error;
@@ -293,12 +308,12 @@ const AdminPanel = () => {
     },
   });
 
-  const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); };
-  const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); };
+  const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); setPCustomFields([{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}]); };
+  const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); setPkgAutoTopup(false); setPkgAutoApiId(""); setPkgVariationName(""); };
   const resetBannerForm = () => { setEditingBanner(null); setBannerTitle(""); setBannerImageUrl(""); setBannerLinkUrl(""); setBannerSortOrder(0); };
 
-  const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategoryId(p.category_id || ""); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); };
-  const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); };
+  const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategoryId(p.category_id || ""); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); setPCustomFields(typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : (p.custom_fields || [{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}])); };
+  const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); setPkgAutoTopup(p.auto_topup_enabled || false); setPkgAutoApiId(p.auto_api_id || ""); setPkgVariationName(p.product_variation_name || ""); };
   const startEditBanner = (b: any) => { setEditingBanner(b); setBannerTitle(b.title); setBannerImageUrl(b.image_url); setBannerLinkUrl(b.link_url || ""); setBannerSortOrder(b.sort_order); };
 
   const handleLogout = async () => { await signOut(); navigate("/login"); };
@@ -316,6 +331,7 @@ const AdminPanel = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
+    { id: "auto-api", label: "Auto API", icon: Zap },
     { id: "webhook-sms", label: "Webhook SMS", icon: MessageSquare },
     { id: "payment", label: "Payment", icon: Wallet },
     { id: "settings", label: "Settings", icon: Settings },
@@ -469,6 +485,25 @@ const AdminPanel = () => {
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Image URL</label><Input value={pImageUrl} onChange={(e) => setPImageUrl(e.target.value)} className="h-9 text-[13px]" /></div>
                   <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort Order</label><Input type="number" value={pSortOrder} onChange={(e) => setPSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
                 </div>
+                {/* Custom Fields */}
+                <div className="mt-3 p-3 bg-secondary rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] font-bold text-foreground">User Input Fields</label>
+                    <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => setPCustomFields([...pCustomFields, {key: "", label: "", placeholder: ""}])}>
+                      <Plus className="w-3 h-3 mr-1" /> Add Field
+                    </Button>
+                  </div>
+                  {pCustomFields.map((f, i) => (
+                    <div key={i} className="grid grid-cols-3 gap-1.5 items-end">
+                      <div><label className="text-[10px] text-muted-foreground">Key</label><Input value={f.key} onChange={(e) => { const nf = [...pCustomFields]; nf[i].key = e.target.value; setPCustomFields(nf); }} placeholder="uid" className="h-8 text-[11px]" /></div>
+                      <div><label className="text-[10px] text-muted-foreground">Label</label><Input value={f.label} onChange={(e) => { const nf = [...pCustomFields]; nf[i].label = e.target.value; setPCustomFields(nf); }} placeholder="আপনার UID লিখুন" className="h-8 text-[11px]" /></div>
+                      <div className="flex gap-1">
+                        <Input value={f.placeholder} onChange={(e) => { const nf = [...pCustomFields]; nf[i].placeholder = e.target.value; setPCustomFields(nf); }} placeholder="Placeholder" className="h-8 text-[11px] flex-1" />
+                        {pCustomFields.length > 1 && <button onClick={() => setPCustomFields(pCustomFields.filter((_, j) => j !== i))} className="p-1 active:opacity-75"><Trash2 className="w-3 h-3 text-destructive" /></button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <div className="flex gap-2 mt-3">
                   <Button onClick={() => saveProduct.mutate()} disabled={!pName} size="sm">{editingProduct ? "Update" : "Add"}</Button>
                   {editingProduct && <Button variant="outline" size="sm" onClick={resetProductForm}>Cancel</Button>}
@@ -514,6 +549,28 @@ const AdminPanel = () => {
                     <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Price</label><Input type="number" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)} className="h-9 text-[13px]" /></div>
                     <div><label className="text-[11px] text-muted-foreground mb-0.5 block">Sort</label><Input type="number" value={pkgSortOrder} onChange={(e) => setPkgSortOrder(Number(e.target.value))} className="h-9 text-[13px]" /></div>
                   </div>
+                  {/* Auto Topup Settings */}
+                  <div className="mt-3 p-3 bg-secondary rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[12px] font-bold text-foreground flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-primary" /> Auto Topup</label>
+                      <Switch checked={pkgAutoTopup} onCheckedChange={setPkgAutoTopup} />
+                    </div>
+                    {pkgAutoTopup && (
+                      <>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground mb-0.5 block">Select Auto API</label>
+                          <select value={pkgAutoApiId} onChange={(e) => setPkgAutoApiId(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card text-foreground h-9">
+                            <option value="">Select API</option>
+                            {autoApis?.map((api: any) => <option key={api.id} value={api.id}>{api.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground mb-0.5 block">Product Variation Name</label>
+                          <Input value={pkgVariationName} onChange={(e) => setPkgVariationName(e.target.value)} placeholder="25 Diamond" className="h-9 text-[13px]" />
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <div className="flex gap-2 mt-3">
                     <Button onClick={() => savePackage.mutate()} disabled={!pkgName || !pkgPrice} size="sm">{editingPackage ? "Update" : "Add"}</Button>
                     {editingPackage && <Button variant="outline" size="sm" onClick={resetPackageForm}>Cancel</Button>}
@@ -527,7 +584,7 @@ const AdminPanel = () => {
                     <div key={pkg.id} className="px-4 py-2.5 flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-medium text-foreground">{pkg.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{pkg.products?.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{pkg.products?.name}{pkg.auto_topup_enabled && <span className="ml-1 text-primary">⚡ Auto</span>}</p>
                       </div>
                       <span className="text-[13px] font-bold text-primary">৳{pkg.price}</span>
                       <Switch checked={pkg.is_active} onCheckedChange={(v) => togglePackage.mutate({ id: pkg.id, is_active: v })} />
@@ -756,6 +813,9 @@ const AdminPanel = () => {
               </div>
             </div>
           )}
+
+          {/* AUTO API */}
+          {activeTab === "auto-api" && <AutoApiTab user={user} />}
 
           {/* WEBHOOK SMS */}
           {activeTab === "webhook-sms" && <WebhookSmsTab user={user} />}
