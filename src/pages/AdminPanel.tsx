@@ -1326,6 +1326,35 @@ const PaymentTab = ({ user }: { user: any }) => {
         </div>
       )}
 
+      {/* Edit Payment History Modal */}
+      {editingPH && (
+        <div className="bg-card rounded-xl border-2 border-primary p-4 space-y-2">
+          <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2"><Pencil className="w-4 h-4" /> Edit Payment</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={phSender} onChange={(e) => setPhSender(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-[12px]">
+              <option value="bKash">bKash</option>
+              <option value="Nagad">Nagad</option>
+              <option value="Rocket">Rocket</option>
+            </select>
+            <Input value={phPhone} onChange={(e) => setPhPhone(e.target.value)} placeholder="Phone" className="h-9 text-[12px]" />
+            <Input value={phTrxId} onChange={(e) => setPhTrxId(e.target.value)} placeholder="TrxID" className="h-9 text-[12px]" />
+            <Input value={phAmount} onChange={(e) => setPhAmount(e.target.value)} type="number" placeholder="Amount" className="h-9 text-[12px]" />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={async () => {
+              const { error } = await supabase.from("payment_history").update({
+                sender: phSender, phone_number: phPhone, transaction_id: phTrxId, amount: parseFloat(phAmount) || 0,
+              }).eq("id", editingPH.id);
+              if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+              setEditingPH(null);
+              refetchHistory();
+              toast({ title: "Payment আপডেট হয়েছে!" });
+            }}>Save</Button>
+            <Button size="sm" variant="outline" onClick={() => setEditingPH(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
       {/* Payment History (Used SMS) */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
@@ -1362,6 +1391,15 @@ const PaymentTab = ({ user }: { user: any }) => {
                 <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-primary">৳{ph.amount || 0}</span></div>
               </div>
               <div className="flex items-center gap-2 mt-1.5">
+                <button onClick={() => {
+                  setEditingPH(ph);
+                  setPhSender(ph.sender || "bKash");
+                  setPhPhone(ph.phone_number || "");
+                  setPhTrxId(ph.transaction_id || "");
+                  setPhAmount(String(ph.amount || 0));
+                }} className="text-[10px] text-muted-foreground flex items-center gap-1 active:opacity-75">
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
                 <button onClick={async () => {
                   const { error } = await supabase.from("payment_history").delete().eq("id", ph.id);
                   if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
