@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      balance_tracker: {
+        Row: {
+          created_at: string
+          id: string
+          provider: string
+          reset_at: string
+          total_received: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          provider: string
+          reset_at?: string
+          total_received?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          provider?: string
+          reset_at?: string
+          total_received?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       banners: {
         Row: {
           created_at: string
@@ -171,6 +198,59 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_history: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          payment_type: string
+          phone_number: string | null
+          raw_message: string | null
+          sender: string
+          sms_message_id: string | null
+          transaction_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          payment_type?: string
+          phone_number?: string | null
+          raw_message?: string | null
+          sender?: string
+          sms_message_id?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          payment_type?: string
+          phone_number?: string | null
+          raw_message?: string | null
+          sender?: string
+          sms_message_id?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_sms_message_id_fkey"
+            columns: ["sms_message_id"]
+            isOneToOne: false
+            referencedRelation: "sms_messages"
             referencedColumns: ["id"]
           },
         ]
