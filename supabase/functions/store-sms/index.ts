@@ -2,18 +2,28 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+function detectSender(value: string) {
+  const msg = value.toUpperCase();
+  if (msg.includes("BKASH") || msg.includes("BKA")) return "bKash";
+  if (msg.includes("NAGAD")) return "Nagad";
+  if (msg.includes("ROCKET")) return "Rocket";
+  return "Unknown";
+}
 
 // Parse bKash SMS: "You have received Tk 100.00 from 01XXXXXXXXX. Ref: TrxID XXXXXXXXXX..."
 // Parse Nagad SMS: "You have received Tk 100.00 from 01XXXXXXXXX. TxnID XXXXXXXXXX..."
-function parseSms(message: string) {
-  const result = { sender: "", phone_number: "", transaction_id: "", amount: 0 };
-
-  // Detect sender
-  const msg = message.toUpperCase();
-  if (msg.includes("BKASH") || msg.includes("BKA")) result.sender = "bKash";
-  else if (msg.includes("NAGAD")) result.sender = "Nagad";
-  else if (msg.includes("ROCKET")) result.sender = "Rocket";
-  else result.sender = "Unknown";
+function parseSms(message: string, senderHint?: string) {
+  const result = {
+    sender: senderHint ? detectSender(senderHint) : detectSender(message),
+    phone_number: "",
+    transaction_id: "",
+    amount: 0,
+  };
 
   // Extract amount - various patterns
   const amountPatterns = [
@@ -51,12 +61,55 @@ function parseSms(message: string) {
   return result;
 }
 
+function getString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isLikelyFormEncoded(rawBody: string) {
+  const trimmed = rawBody.trim();
+  return trimmed.includes("=") && !trimmed.startsWith("{") && !trimmed.startsWith("[");
+}
+
+function parsePayload(rawBody: string, contentType: string) {
+  if (!rawBody) return {} as Record<string, unknown>;
+
+  const normalizedType = contentType.toLowerCase();
+
+  if (normalizedType.includes("application/json")) {
+    const parsed = JSON.parse(rawBody);
+    return typeof parsed === "string"
+      ? { message: parsed }
+      : parsed && typeof parsed === "object"
+        ? parsed as Record<string, unknown>
+        : {};
+  }
+
+  if (
+    normalizedType.includes("application/x-www-form-urlencoded") ||
+    (normalizedType.includes("text/plain") && isLikelyFormEncoded(rawBody)) ||
+    isLikelyFormEncoded(rawBody)
+  ) {
+    return Object.fromEntries(new URLSearchParams(rawBody).entries());
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody);
+    return typeof parsed === "string"
+      ? { message: parsed }
+      : parsed && typeof parsed === "object"
+        ? parsed as Record<string, unknown>
+        : {};
+  } catch {
+    return { message: rawBody };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { status: 200, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" } });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
   try {
@@ -67,7 +120,10 @@ Deno.serve(async (req) => {
     const token = url.searchParams.get("token") || pathParts[pathParts.length - 1];
 
     if (!token || token === "store-sms") {
-      return new Response(JSON.stringify({ error: "Missing webhook token" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Missing webhook token" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -81,13 +137,33 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (whError || !webhook) {
-      return new Response(JSON.stringify({ error: "Invalid or inactive webhook token" }), { status: 403, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Invalid or inactive webhook token" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const body = await req.json();
-    const rawMessage = typeof body === "string" ? body : (body.message || body.body || body.text || body.sms || JSON.stringify(body));
+    const rawBody = await req.text();
+    const payload = parsePayload(rawBody, req.headers.get("content-type") || "");
+    const senderHint = getString(payload.from) || getString(payload.sender) || url.searchParams.get("from") || "";
+    const rawMessage =
+      getString(payload.content) ||
+      getString(payload.message) ||
+      getString(payload.body) ||
+      getString(payload.text) ||
+      getString(payload.sms) ||
+      url.searchParams.get("content") ||
+      url.searchParams.get("message") ||
+      rawBody;
 
-    const parsed = parseSms(String(rawMessage));
+    if (!rawMessage.trim()) {
+      return new Response(JSON.stringify({ error: "Missing SMS content" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const parsed = parseSms(String(rawMessage), senderHint);
 
     const { error: insertError } = await supabaseAdmin.from("sms_messages").insert({
       webhook_id: webhook.id,
@@ -100,10 +176,16 @@ Deno.serve(async (req) => {
 
     if (insertError) throw insertError;
 
-    return new Response(JSON.stringify({ status: "stored", parsed }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ status: "stored", parsed }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Store SMS error:", message);
-    return new Response(JSON.stringify({ error: message }), { status: 400, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: message }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
