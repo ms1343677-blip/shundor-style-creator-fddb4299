@@ -1,8 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -48,22 +52,32 @@ Deno.serve(async (req) => {
       fields = { uid: order.game_id };
     }
 
-    // Build API URL - ensure proper format
+    // Build API URL
     const baseUrl = autoApi.base_url.startsWith("http") ? autoApi.base_url : `https://${autoApi.base_url}`;
     const apiUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
     
-    const apiType = autoApi.api_type || "automation";
+    const apiType = autoApi.api_type || "freefire";
     const variationName = pkg.product_variation_name || pkg.name;
-    const uid = fields.uid || fields.game_id || order.game_id;
+    const uid = fields.uid || fields.player_id || fields.game_id || order.game_id;
 
     let endpoint: string;
-    // deno-lint-ignore no-explicit-any
-    let bodyPayload: Record<string, any> = {};
-
+    let bodyPayload: Record<string, unknown> = {};
     const fetchHeaders: Record<string, string> = { "Content-Type": "application/json" };
 
-    if (apiType === "freefire") {
-      // FreeFire Server format - Bearer token auth, direct URL
+    if (apiType === "humayun") {
+      // Humayun format: POST to /webhook/humayun/order with api_key in body
+      endpoint = `${apiUrl}/webhook/humayun/order`;
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=humayun`;
+      bodyPayload = {
+        api_key: autoApi.api_key,
+        order_id: order.id,
+        uid,
+        variation_name: variationName,
+        status: "Processing",
+        callback_url: callbackUrl,
+      };
+    } else {
+      // FreeFire Server format: Bearer token auth, direct URL, account_info as object
       endpoint = apiUrl;
       const callbackUrl = `${SUPABASE_URL}/functions/v1/api?order=${order.id}`;
       
@@ -84,30 +98,6 @@ Deno.serve(async (req) => {
         order_id: order.id,
         user_id: "nouser",
       };
-    } else if (apiType === "humayun") {
-      endpoint = `${apiUrl}/webhook/humayun/order`;
-      const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=humayun`;
-      bodyPayload = {
-        api_key: autoApi.api_key,
-        order_id: order.id,
-        uid,
-        variation_name: variationName,
-        status: "Processing",
-        callback_url: callbackUrl,
-      };
-    } else {
-      endpoint = `${apiUrl}/webhook/website/order`;
-      const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=automation`;
-      bodyPayload = {
-        api_key: autoApi.api_key,
-        order_id: order.id,
-        product_variation_name: variationName,
-        diamond_quantity: variationName,
-        uid,
-        status: "Processing",
-        order_time: new Date().toISOString(),
-        callback_url: callbackUrl,
-      };
     }
 
     console.log("Auto topup request:", { type: apiType, url: endpoint, payload: { ...bodyPayload, api_key: "***" } });
@@ -122,7 +112,6 @@ Deno.serve(async (req) => {
     console.log("Auto topup response:", extData);
 
     if (extResponse.ok && (extData.success || extData.status === "success")) {
-      // Update order status to completed
       await supabaseAdmin.from("orders").update({ 
         status: "processing",
         transaction_id: extData.transaction_id || extData.trx_id || null,
@@ -132,7 +121,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } else {
-      // Mark order but don't fail - admin can handle
       await supabaseAdmin.from("orders").update({ status: "pending" }).eq("id", order_id);
       
       return new Response(JSON.stringify({ 

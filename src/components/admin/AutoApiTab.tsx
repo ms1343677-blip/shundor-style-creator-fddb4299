@@ -9,9 +9,8 @@ import { Plus, Pencil, Trash2, Globe, Key, Save, Tag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const API_TYPES = [
-  { value: "automation", label: "Automation (Default)", endpoint: "/webhook/website/order" },
-  { value: "humayun", label: "Humayun", endpoint: "/webhook/humayun/order" },
   { value: "freefire", label: "FreeFire Server", endpoint: "Direct URL (Bearer Token)" },
+  { value: "humayun", label: "Humayun", endpoint: "/webhook/humayun/order" },
 ];
 
 const AutoApiTab = ({ user }: { user: any }) => {
@@ -20,7 +19,7 @@ const AutoApiTab = ({ user }: { user: any }) => {
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [apiType, setApiType] = useState("automation");
+  const [apiType, setApiType] = useState("freefire");
 
   const { data: autoApis, refetch } = useQuery({
     queryKey: ["admin-auto-apis"],
@@ -32,14 +31,14 @@ const AutoApiTab = ({ user }: { user: any }) => {
     enabled: !!user,
   });
 
-  const resetForm = () => { setEditing(null); setName(""); setBaseUrl(""); setApiKey(""); setApiType("automation"); };
+  const resetForm = () => { setEditing(null); setName(""); setBaseUrl(""); setApiKey(""); setApiType("freefire"); };
 
   const startEdit = (api: any) => {
     setEditing(api);
     setName(api.name);
     setBaseUrl(api.base_url);
     setApiKey(api.api_key);
-    setApiType((api as any).api_type || "automation");
+    setApiType(api.api_type || "freefire");
   };
 
   const save = async () => {
@@ -101,12 +100,16 @@ const AutoApiTab = ({ user }: { user: any }) => {
             </Select>
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground mb-0.5 block">Website API URL</label>
-            <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="oktopupbd.com" className="h-9 text-[13px]" />
+            <label className="text-[11px] text-muted-foreground mb-0.5 block">
+              {apiType === "humayun" ? "Server URL (base)" : "Server URL (direct)"}
+            </label>
+            <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder={apiType === "humayun" ? "oktopupbd.com" : "https://server.example.com/api/topup"} className="h-9 text-[13px]" />
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground mb-0.5 block">Website API Key</label>
-            <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="API Key" className="h-9 text-[13px]" type="password" />
+            <label className="text-[11px] text-muted-foreground mb-0.5 block">
+              {apiType === "humayun" ? "API Key" : "Bearer Token"}
+            </label>
+            <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={apiType === "humayun" ? "API Key" : "Bearer Token"} className="h-9 text-[13px]" type="password" />
           </div>
         </div>
         <div className="flex gap-2 mt-3">
@@ -124,7 +127,7 @@ const AutoApiTab = ({ user }: { user: any }) => {
         </div>
         <div className="divide-y divide-border">
           {autoApis?.map((api: any) => {
-            const typeInfo = getTypeInfo(api.api_type || "automation");
+            const typeInfo = getTypeInfo(api.api_type || "freefire");
             return (
               <div key={api.id} className="px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
