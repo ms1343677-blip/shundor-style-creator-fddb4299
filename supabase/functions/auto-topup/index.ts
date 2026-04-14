@@ -114,10 +114,14 @@ Deno.serve(async (req) => {
 
     console.log("Auto topup request:", { type: apiType, url: endpoint, payload: { ...payload, api_key: "***" } });
 
+    const bodyPayload = apiType === "freefire" 
+      ? { ...Object.fromEntries(Object.entries(payload).map(([k, v]) => [k, typeof v === "string" && (v.startsWith("{") || v.startsWith("[")) ? JSON.parse(v) : v])) }
+      : payload;
+
     const extResponse = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      headers: fetchHeaders,
+      body: JSON.stringify(bodyPayload),
     });
 
     const extData = await extResponse.json();
