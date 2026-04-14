@@ -47,9 +47,14 @@ Deno.serve(async (req) => {
     // Parse game_id field - it may contain JSON with multiple fields
     let fields: Record<string, string> = {};
     try {
-      fields = JSON.parse(order.game_id);
+      const parsed = JSON.parse(order.game_id);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        fields = parsed;
+      } else {
+        fields = { uid: String(order.game_id) };
+      }
     } catch {
-      fields = { uid: order.game_id };
+      fields = { uid: String(order.game_id) };
     }
 
     // Build API URL
