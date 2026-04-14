@@ -102,7 +102,24 @@ Deno.serve(async (req) => {
       body: JSON.stringify(bodyPayload),
     });
 
-    const extData = await extResponse.json();
+    const responseText = await extResponse.text();
+    console.log("Auto topup raw response:", responseText.substring(0, 500));
+
+    let extData: Record<string, unknown>;
+    try {
+      extData = JSON.parse(responseText);
+    } catch {
+      console.error("Auto topup: External API returned non-JSON response");
+      await supabaseAdmin.from("orders").update({ status: "pending", delivery_message: "External API returned invalid response" }).eq("id", order_id);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: "External API returned non-JSON response",
+        raw: responseText.substring(0, 200),
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log("Auto topup response:", extData);
 
     if (extResponse.ok && (extData.success || extData.status === "success")) {
