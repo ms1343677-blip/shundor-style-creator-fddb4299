@@ -17,6 +17,7 @@ export type Database = {
       auto_apis: {
         Row: {
           api_key: string
+          api_type: string
           base_url: string
           created_at: string
           id: string
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           api_key?: string
+          api_type?: string
           base_url: string
           created_at?: string
           id?: string
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           api_key?: string
+          api_type?: string
           base_url?: string
           created_at?: string
           id?: string
