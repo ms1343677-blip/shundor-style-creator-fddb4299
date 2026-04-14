@@ -7,10 +7,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+git add dist/
+git commit -m "Add dist folder for Hostinger"
+git push origin main
+
 
 # Editor directories and files
 .vscode/*
