@@ -58,6 +58,11 @@ const getMode = (url: URL, body: Record<string, unknown>) => {
     return source;
   }
 
+  // FreeFire Server (GamesBazar) format: { orderid, status, content } with ?order= query param
+  if (url.searchParams.has("order") && (body.orderid || body.status || body.content)) {
+    return "freefire";
+  }
+
   if (body.data && typeof body.data === "object") {
     return "default";
   }
@@ -127,6 +132,56 @@ const handleInvalidUid = async (
     status: "cancelled",
     refunded,
   });
+};
+
+const handleFreefireWebhook = async (url: URL, body: Record<string, unknown>) => {
+  const orderId = url.searchParams.get("order") || String(body.orderid || "");
+
+  if (!orderId) {
+    return respond(false, { error: "Missing order_id" });
+  }
+
+  const order = await getOrder(orderId);
+  if (!order) {
+    return respond(false, { error: "Order not found", order_id: orderId });
+  }
+
+  if (["completed", "cancelled"].includes(order.status)) {
+    return respond(true, { message: "Order already processed", order_id: orderId, status: order.status });
+  }
+
+  const rawStatus = String(body.status || "").toLowerCase();
+  const content = String(body.content || "");
+
+  console.log("FreeFire webhook processing:", { orderId, rawStatus, content });
+
+  // Check for invalid UID / player ID errors
+  if (content && (isInvalidUidError(content) || content.toLowerCase().includes("invalid player"))) {
+    return handleInvalidUid(order, content || "Invalid Player ID");
+  }
+
+  if (["success", "finish", "completed", "complete"].includes(rawStatus)) {
+    await updateOrder(orderId, { status: "completed", delivery_message: null });
+    return respond(true, { message: "Order completed", order_id: orderId, status: "completed" });
+  }
+
+  if (["error", "failed"].includes(rawStatus)) {
+    // Check if content has cancel-worthy messages
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes("canceled by admin") || lowerContent.includes("cancelled by admin")) {
+      return handleInvalidUid(order, "Order canceled by Admin");
+    }
+
+    await updateOrder(orderId, { status: "processing", delivery_message: content || "Order failed" });
+    return respond(false, {
+      message: "Order failed",
+      order_id: orderId,
+      status: "processing",
+      delivery_message: content,
+    });
+  }
+
+  return respond(true, { message: "Webhook received", order_id: orderId, received_status: rawStatus });
 };
 
 const handleDefaultWebhook = async (url: URL, body: Record<string, unknown>) => {
@@ -250,6 +305,10 @@ Deno.serve(async (req) => {
 
     if (mode === "default") {
       return await handleDefaultWebhook(url, body);
+    }
+
+    if (mode === "freefire") {
+      return await handleFreefireWebhook(url, body);
     }
 
     if (mode === "automation" || mode === "humayun") {
