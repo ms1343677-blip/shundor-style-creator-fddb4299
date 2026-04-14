@@ -8,6 +8,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const getTextValue = (value: unknown) => (typeof value === "string" ? value : "");
+
+const getNullableTextValue = (value: unknown) => {
+  const text = getTextValue(value).trim();
+  return text ? text : null;
+};
+
+const isSuccessfulResponse = (apiType: string, data: Record<string, unknown>) => {
+  const success = data.success;
+  const status = getTextValue(data.status).toLowerCase();
+  const message = getTextValue(data.message).toLowerCase();
+
+  if (success === true || success === "true") return true;
+  if (["success", "completed", "complete"].includes(status)) return true;
+  if (apiType === "freefire" && message.includes("order placed successfully")) return true;
+  if (message.includes("processing initiated")) return true;
+
+  return false;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -71,7 +91,7 @@ Deno.serve(async (req) => {
         callback_url: callbackUrl,
       };
     } else {
-      // FreeFire Server format: Bearer token auth, account_info is the uid string directly
+      // FreeFire Server format: Bearer token auth, account_info must be an object
       endpoint = apiUrl;
       const callbackUrl = `${SUPABASE_URL}/functions/v1/api?order=${order.id}`;
       
@@ -87,7 +107,7 @@ Deno.serve(async (req) => {
       bodyPayload = {
         quantity,
         selectedPackage: { id: 1, tag_line: parsedName },
-        account_info: uid,
+        account_info: { player_id: uid },
         url: callbackUrl,
         order_id: order.id,
         user_id: "nouser",
@@ -122,21 +142,37 @@ Deno.serve(async (req) => {
 
     console.log("Auto topup response:", extData);
 
-    if (extResponse.ok && (extData.success || extData.status === "success")) {
-      await supabaseAdmin.from("orders").update({ 
+    const externalTransactionId =
+      getNullableTextValue(extData.transaction_id) || getNullableTextValue(extData.trx_id);
+    const success = extResponse.ok && isSuccessfulResponse(apiType, extData);
+
+    if (success) {
+      const orderUpdates: Record<string, unknown> = {
         status: "processing",
-        transaction_id: extData.transaction_id || extData.trx_id || null,
-      }).eq("id", order_id);
+        delivery_message: null,
+      };
+
+      if (externalTransactionId) {
+        orderUpdates.transaction_id = externalTransactionId;
+      }
+
+      await supabaseAdmin.from("orders").update(orderUpdates).eq("id", order_id);
 
       return new Response(JSON.stringify({ success: true, data: extData }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } else {
-      await supabaseAdmin.from("orders").update({ status: "pending" }).eq("id", order_id);
+      const failureMessage =
+        getTextValue(extData.message) || getTextValue(extData.error) || "External API error";
+
+      await supabaseAdmin
+        .from("orders")
+        .update({ status: "pending", delivery_message: failureMessage })
+        .eq("id", order_id);
       
       return new Response(JSON.stringify({ 
         success: false, 
-        message: extData.message || "External API error",
+        message: failureMessage,
         data: extData,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
