@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       bodyPayload = {
         quantity,
         selectedPackage: { id: 1, tag_line: parsedName },
-        account_info: fields,
+        account_info: { player_id: uid },
         url: callbackUrl,
         order_id: order.id,
         user_id: "nouser",
