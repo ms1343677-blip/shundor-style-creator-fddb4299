@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
         callback_url: callbackUrl,
       };
     } else {
-      // FreeFire Server format: Bearer token auth, direct URL, account_info as object
+      // FreeFire Server format: Bearer token auth, account_info is the uid string directly
       endpoint = apiUrl;
       const callbackUrl = `${SUPABASE_URL}/functions/v1/api?order=${order.id}`;
       
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       bodyPayload = {
         quantity,
         selectedPackage: { id: 1, tag_line: parsedName },
-        account_info: { player_id: uid },
+        account_info: uid,
         url: callbackUrl,
         order_id: order.id,
         user_id: "nouser",
