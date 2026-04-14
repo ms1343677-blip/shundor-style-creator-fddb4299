@@ -44,18 +44,8 @@ Deno.serve(async (req) => {
     const autoApi = pkg.auto_apis;
     if (!autoApi.is_active) throw new Error("Auto API is disabled");
 
-    // Parse game_id field - it may contain JSON with multiple fields
-    let fields: Record<string, string> = {};
-    try {
-      const parsed = JSON.parse(order.game_id);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        fields = parsed;
-      } else {
-        fields = { uid: String(order.game_id) };
-      }
-    } catch {
-      fields = { uid: String(order.game_id) };
-    }
+    // game_id is the UID (account_info) - always treat as string
+    const uid = String(order.game_id).trim();
 
     // Build API URL
     const baseUrl = autoApi.base_url.startsWith("http") ? autoApi.base_url : `https://${autoApi.base_url}`;
@@ -63,7 +53,6 @@ Deno.serve(async (req) => {
     
     const apiType = autoApi.api_type || "freefire";
     const variationName = pkg.product_variation_name || pkg.name;
-    const uid = fields.uid || fields.player_id || fields.game_id || order.game_id;
 
     let endpoint: string;
     let bodyPayload: Record<string, unknown> = {};
@@ -98,7 +87,7 @@ Deno.serve(async (req) => {
       bodyPayload = {
         quantity,
         selectedPackage: { id: 1, tag_line: parsedName },
-        account_info: fields,
+        account_info: { player_id: uid },
         url: callbackUrl,
         order_id: order.id,
         user_id: "nouser",
