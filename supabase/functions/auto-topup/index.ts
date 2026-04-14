@@ -76,10 +76,10 @@ Deno.serve(async (req) => {
       }
 
       fetchHeaders["Authorization"] = `Bearer ${autoApi.api_key}`;
-      payload = {
-        quantity: String(quantity),
-        selectedPackage: JSON.stringify({ id: 1, tag_line: parsedName }),
-        account_info: JSON.stringify(fields),
+      bodyPayload = {
+        quantity,
+        selectedPackage: { id: 1, tag_line: parsedName },
+        account_info: fields,
         url: callbackUrl,
         order_id: order.id,
         user_id: "nouser",
