@@ -57,13 +57,37 @@ Deno.serve(async (req) => {
     const uid = fields.uid || fields.game_id || order.game_id;
 
     let endpoint: string;
-    let payload: Record<string, string>;
+    // deno-lint-ignore no-explicit-any
+    let bodyPayload: Record<string, any> = {};
 
-    if (apiType === "humayun") {
-      // Humayun API format
+    const fetchHeaders: Record<string, string> = { "Content-Type": "application/json" };
+
+    if (apiType === "freefire") {
+      // FreeFire Server format - Bearer token auth, direct URL
+      endpoint = apiUrl;
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/api?order=${order.id}`;
+      
+      let parsedName = variationName;
+      let quantity = 1;
+      const match = variationName.match(/^(weekly|monthly)(\d+)$/i);
+      if (match) {
+        parsedName = match[1];
+        quantity = parseInt(match[2], 10);
+      }
+
+      fetchHeaders["Authorization"] = `Bearer ${autoApi.api_key}`;
+      bodyPayload = {
+        quantity,
+        selectedPackage: { id: 1, tag_line: parsedName },
+        account_info: fields,
+        url: callbackUrl,
+        order_id: order.id,
+        user_id: "nouser",
+      };
+    } else if (apiType === "humayun") {
       endpoint = `${apiUrl}/webhook/humayun/order`;
       const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=humayun`;
-      payload = {
+      bodyPayload = {
         api_key: autoApi.api_key,
         order_id: order.id,
         uid,
@@ -72,10 +96,9 @@ Deno.serve(async (req) => {
         callback_url: callbackUrl,
       };
     } else {
-      // Default automation API format
       endpoint = `${apiUrl}/webhook/website/order`;
       const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=automation`;
-      payload = {
+      bodyPayload = {
         api_key: autoApi.api_key,
         order_id: order.id,
         product_variation_name: variationName,
@@ -87,12 +110,12 @@ Deno.serve(async (req) => {
       };
     }
 
-    console.log("Auto topup request:", { type: apiType, url: endpoint, payload: { ...payload, api_key: "***" } });
+    console.log("Auto topup request:", { type: apiType, url: endpoint, payload: { ...bodyPayload, api_key: "***" } });
 
     const extResponse = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      headers: fetchHeaders,
+      body: JSON.stringify(bodyPayload),
     });
 
     const extData = await extResponse.json();
