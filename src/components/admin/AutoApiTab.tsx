@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 const API_TYPES = [
   { value: "automation", label: "Automation (Default)", endpoint: "/webhook/website/order" },
   { value: "humayun", label: "Humayun", endpoint: "/webhook/humayun/order" },
+  { value: "freefire", label: "FreeFire Server", endpoint: "Direct URL (Bearer Token)" },
 ];
 
 const AutoApiTab = ({ user }: { user: any }) => {

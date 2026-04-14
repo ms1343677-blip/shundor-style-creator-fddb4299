@@ -59,7 +59,32 @@ Deno.serve(async (req) => {
     let endpoint: string;
     let payload: Record<string, string>;
 
-    if (apiType === "humayun") {
+    let fetchHeaders: Record<string, string> = { "Content-Type": "application/json" };
+
+    if (apiType === "freefire") {
+      // FreeFire Server format - Bearer token auth, direct URL
+      endpoint = apiUrl;
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/api?order=${order.id}`;
+      
+      // Parse quantity from variation name (e.g. "weekly2" → name="weekly", quantity=2)
+      let parsedName = variationName;
+      let quantity = 1;
+      const match = variationName.match(/^(weekly|monthly)(\d+)$/i);
+      if (match) {
+        parsedName = match[1];
+        quantity = parseInt(match[2], 10);
+      }
+
+      fetchHeaders["Authorization"] = `Bearer ${autoApi.api_key}`;
+      payload = {
+        quantity: String(quantity),
+        selectedPackage: JSON.stringify({ id: 1, tag_line: parsedName }),
+        account_info: JSON.stringify(fields),
+        url: callbackUrl,
+        order_id: order.id,
+        user_id: "nouser",
+      };
+    } else if (apiType === "humayun") {
       // Humayun API format
       endpoint = `${apiUrl}/webhook/humayun/order`;
       const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=humayun`;
