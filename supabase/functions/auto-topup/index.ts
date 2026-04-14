@@ -52,24 +52,44 @@ Deno.serve(async (req) => {
     const baseUrl = autoApi.base_url.startsWith("http") ? autoApi.base_url : `https://${autoApi.base_url}`;
     const apiUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
     
-    // Build payload matching the external API's expected format
+    const apiType = autoApi.api_type || "automation";
     const variationName = pkg.product_variation_name || pkg.name;
-    const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=automation`;
-    const payload: Record<string, string> = {
-      api_key: autoApi.api_key,
-      order_id: order.id,
-      product_variation_name: variationName,
-      diamond_quantity: variationName,
-      uid: fields.uid || fields.game_id || order.game_id,
-      status: "Processing",
-      order_time: new Date().toISOString(),
-      callback_url: callbackUrl,
-    };
+    const uid = fields.uid || fields.game_id || order.game_id;
 
-    console.log("Auto topup request:", { url: `${apiUrl}/webhook/website/order`, payload: { ...payload, api_key: "***" } });
+    let endpoint: string;
+    let payload: Record<string, string>;
 
-    // Forward to external API - Main endpoint: POST /webhook/website/order
-    const extResponse = await fetch(`${apiUrl}/webhook/website/order`, {
+    if (apiType === "humayun") {
+      // Humayun API format
+      endpoint = `${apiUrl}/webhook/humayun/order`;
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=humayun`;
+      payload = {
+        api_key: autoApi.api_key,
+        order_id: order.id,
+        uid,
+        variation_name: variationName,
+        status: "Processing",
+        callback_url: callbackUrl,
+      };
+    } else {
+      // Default automation API format
+      endpoint = `${apiUrl}/webhook/website/order`;
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/api?source=automation`;
+      payload = {
+        api_key: autoApi.api_key,
+        order_id: order.id,
+        product_variation_name: variationName,
+        diamond_quantity: variationName,
+        uid,
+        status: "Processing",
+        order_time: new Date().toISOString(),
+        callback_url: callbackUrl,
+      };
+    }
+
+    console.log("Auto topup request:", { type: apiType, url: endpoint, payload: { ...payload, api_key: "***" } });
+
+    const extResponse = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

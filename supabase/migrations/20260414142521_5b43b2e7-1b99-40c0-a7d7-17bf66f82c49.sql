@@ -1,0 +1,1 @@
+ALTER TABLE public.auto_apis ADD COLUMN IF NOT EXISTS api_type text NOT NULL DEFAULT 'automation';
