@@ -59,35 +59,52 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Validate package_name or product_name against existing packages
+      // Match by api_tagline first, then product_variation_name, then name
       const matchField = package_name || product_name;
-      const { data: matchedPkg } = await supabase
+      
+      // 1) Try api_tagline
+      const { data: matchedByTagline } = await supabase
         .from("packages")
-        .select("id, name, product_variation_name, price, product_id, auto_topup_enabled, auto_api_id")
+        .select("id, name, product_variation_name, api_tagline, price, product_id, auto_topup_enabled, auto_api_id")
         .eq("is_active", true)
-        .ilike("product_variation_name", matchField)
+        .neq("api_tagline", "")
+        .ilike("api_tagline", matchField)
         .limit(1)
         .maybeSingle();
 
-      let validPkg = matchedPkg;
+      let validPkg = matchedByTagline;
+      
+      // 2) Try product_variation_name
+      if (!validPkg) {
+        const { data: matchedByVariation } = await supabase
+          .from("packages")
+          .select("id, name, product_variation_name, api_tagline, price, product_id, auto_topup_enabled, auto_api_id")
+          .eq("is_active", true)
+          .ilike("product_variation_name", matchField)
+          .limit(1)
+          .maybeSingle();
+        validPkg = matchedByVariation;
+      }
+
+      // 3) Try package name
       if (!validPkg) {
         const { data: matchedByName } = await supabase
           .from("packages")
-          .select("id, name, product_variation_name, price, product_id, auto_topup_enabled, auto_api_id")
+          .select("id, name, product_variation_name, api_tagline, price, product_id, auto_topup_enabled, auto_api_id")
           .eq("is_active", true)
           .ilike("name", matchField)
           .limit(1)
           .maybeSingle();
-
-        if (!matchedByName) {
-          return new Response(JSON.stringify({ 
-            success: false, 
-            error: `No matching package found for "${matchField}". Please use a valid product_variation_name or package name.` 
-          }), {
-            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
         validPkg = matchedByName;
+      }
+
+      if (!validPkg) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `No matching package found for "${matchField}". Please use a valid api_tagline, product_variation_name or package name.` 
+        }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Extract source website from callback_url or referer
