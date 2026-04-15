@@ -235,44 +235,19 @@ Route::post('/topup/callback', [AutoTopupController::class, 'handleCallback']);`
           {loading ? (
             <p className="text-[12px] text-muted-foreground">লোড হচ্ছে...</p>
           ) : app ? (
-            <div className="space-y-3">
-              <div className="bg-secondary rounded-lg p-3">
-                <p className="text-[10px] text-muted-foreground mb-1">আপনার Secret Key (একটি মাত্র):</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-[10px] text-primary font-mono flex-1 break-all">{app.api_key}</code>
-                  <button onClick={() => copyText(app.api_key)} className="p-1 active:opacity-60">
-                    <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[11px] text-muted-foreground mb-1.5">Callback URL (অর্ডার আপডেট পাঠাবে এখানে):</p>
-                <div className="flex gap-2">
-                  <Input
-                    value={callbackUrl}
-                    onChange={(e) => setCallbackUrl(e.target.value)}
-                    placeholder="https://yoursite.com/api/topup/callback"
-                    className="h-8 text-[12px] flex-1"
-                  />
-                  <Button size="sm" onClick={updateCallback} className="h-8 text-[11px]">
-                    সেভ
-                  </Button>
-                </div>
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-[10px] text-muted-foreground mb-1">আপনার Secret Key (একটি মাত্র):</p>
+              <div className="flex items-center gap-2">
+                <code className="text-[10px] text-primary font-mono flex-1 break-all">{app.api_key}</code>
+                <button onClick={() => copyText(app.api_key)} className="p-1 active:opacity-60">
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Input
-                value={callbackUrl}
-                onChange={(e) => setCallbackUrl(e.target.value)}
-                placeholder="Callback URL — https://yoursite.com/api/topup/callback"
-                className="h-9 text-[13px]"
-              />
-              <Button onClick={createApp} disabled={creating} className="w-full h-9 text-[13px] font-bold">
-                {creating ? "তৈরি হচ্ছে..." : "🔑 Secret Key Generate করুন"}
-              </Button>
-            </div>
+            <Button onClick={createApp} disabled={creating} className="w-full h-9 text-[13px] font-bold">
+              {creating ? "তৈরি হচ্ছে..." : "🔑 Secret Key Generate করুন"}
+            </Button>
           )}
         </div>
 
