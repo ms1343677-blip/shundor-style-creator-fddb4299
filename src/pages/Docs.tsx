@@ -29,41 +29,61 @@ const Docs = () => {
   useEffect(() => {
     if (user) {
       fetchApp();
-      fetchLogs();
     }
   }, [user]);
 
-  const fetchLogs = async () => {
-    if (!user) return;
-    setLogsLoading(true);
-    // Get user's developer app first
-    const { data: devApp } = await supabase
-      .from("developer_apps")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+  useEffect(() => {
+    if (app?.id) {
+      fetchLogs(app.id);
+    } else {
+      setLogs([]);
+    }
+  }, [app?.id]);
 
-    if (devApp) {
-      const { data } = await supabase
-        .from("external_orders")
-        .select("*")
-        .eq("developer_app_id", devApp.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
+  const fetchLogs = async (developerAppId?: string) => {
+    const appId = developerAppId || app?.id;
+    if (!appId) {
+      setLogs([]);
+      return;
+    }
+
+    setLogsLoading(true);
+    const { data, error } = await supabase
+      .from("external_orders")
+      .select("*")
+      .eq("developer_app_id", appId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      toast({ title: "Logs load failed", description: error.message, variant: "destructive" });
+      setLogs([]);
+    } else {
       setLogs(data || []);
     }
+
     setLogsLoading(false);
   };
 
   const fetchApp = async () => {
+    if (!user) return;
+
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("developer_apps")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
-    setApp(data);
+
+    if (error) {
+      toast({ title: "App load failed", description: error.message, variant: "destructive" });
+      setApp(null);
+    } else {
+      setApp(data);
+    }
+
     setLoading(false);
   };
 
@@ -77,7 +97,7 @@ const Docs = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "✅ API Key তৈরি হয়েছে!" });
-      fetchApp();
+      await fetchApp();
     }
     setCreating(false);
   };
@@ -409,7 +429,7 @@ Route::post('/topup/callback', [AutoTopupController::class, 'handleCallback']);`
               <ScrollText className="w-4 h-4 text-primary" /> 📊 API Logs
             </h2>
             <button
-              onClick={fetchLogs}
+              onClick={() => fetchLogs()}
               disabled={logsLoading}
               className="text-[11px] text-primary font-bold flex items-center gap-1 active:opacity-60"
             >
