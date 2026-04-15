@@ -184,6 +184,7 @@ export type Database = {
           external_order_id: string | null
           game_id: string
           id: string
+          internal_order_id: string | null
           package_name: string
           product_name: string
           status: string
@@ -199,6 +200,7 @@ export type Database = {
           external_order_id?: string | null
           game_id?: string
           id?: string
+          internal_order_id?: string | null
           package_name?: string
           product_name?: string
           status?: string
@@ -214,6 +216,7 @@ export type Database = {
           external_order_id?: string | null
           game_id?: string
           id?: string
+          internal_order_id?: string | null
           package_name?: string
           product_name?: string
           status?: string
