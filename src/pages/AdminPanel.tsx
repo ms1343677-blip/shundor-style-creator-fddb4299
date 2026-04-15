@@ -14,6 +14,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import AutoApiTab from "@/components/admin/AutoApiTab";
 import AdminOrdersTab from "@/components/admin/AdminOrdersTab";
+import AdminSettingsTab from "@/components/admin/AdminSettingsTab";
 
 type Tab = "dashboard" | "categories" | "products" | "packages" | "orders" | "users" | "banners" | "settings" | "webhook-sms" | "payment" | "auto-api";
 
