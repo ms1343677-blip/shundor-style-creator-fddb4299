@@ -37,9 +37,17 @@ const AdminOrdersTab = ({ orders, updateOrderStatus }: { orders: any[]; updateOr
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-foreground">{order.products?.name} — {order.packages?.name}</p>
-                  <p className="text-[10px] text-muted-foreground">Game ID: {order.game_id} · ৳{order.amount} · {order.payment_method}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
-                  {order.delivery_message && (
+                   <p className="text-[10px] text-muted-foreground">Game ID: {order.game_id} · ৳{order.amount} · {order.payment_method}</p>
+                   <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
+                   {order.source_url && (
+                     <p className="text-[10px] text-blue-500 mt-0.5 flex items-center gap-1">
+                       <Globe className="w-3 h-3" />
+                       <a href={order.source_url} target="_blank" rel="noopener noreferrer" className="underline truncate max-w-[200px]">
+                         {(() => { try { return new URL(order.source_url).hostname; } catch { return order.source_url; } })()}
+                       </a>
+                     </p>
+                   )}
+                   {order.delivery_message && (
                     <p className="text-[10px] text-primary mt-0.5 flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" /> {order.delivery_message}
                     </p>
