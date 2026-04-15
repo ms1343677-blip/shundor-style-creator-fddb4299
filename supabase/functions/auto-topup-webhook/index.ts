@@ -91,6 +91,53 @@ const getOrder = async (orderId: string) => {
 const updateOrder = async (orderId: string, updates: Record<string, unknown>) => {
   const { error } = await supabaseAdmin.from("orders").update(updates).eq("id", orderId);
   if (error) throw error;
+  
+  // Forward callback to external website if this order came from API
+  await forwardExternalCallback(orderId, updates);
+};
+
+const forwardExternalCallback = async (orderId: string, updates: Record<string, unknown>) => {
+  try {
+    // Find linked external_order by matching the real order id stored as external_order_id
+    const { data: extOrder } = await supabaseAdmin
+      .from("external_orders")
+      .select("id, callback_url, external_order_id, product_name, package_name, game_id, amount")
+      .eq("external_order_id", orderId)
+      .maybeSingle();
+
+    if (!extOrder || !extOrder.callback_url || !extOrder.callback_url.trim()) return;
+
+    const newStatus = String(updates.status || "");
+    if (!newStatus) return;
+
+    // Update external_orders status too
+    await supabaseAdmin.from("external_orders").update({ status: newStatus }).eq("id", extOrder.id);
+
+    // Send callback to source website
+    const callbackRes = await fetch(extOrder.callback_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_id: extOrder.id,
+        external_order_id: extOrder.external_order_id,
+        status: newStatus,
+        product_name: extOrder.product_name,
+        package_name: extOrder.package_name,
+        game_id: extOrder.game_id,
+        amount: extOrder.amount,
+        delivery_message: updates.delivery_message || null,
+      }),
+    });
+    const callbackText = await callbackRes.text();
+    await supabaseAdmin.from("external_orders").update({
+      callback_status: callbackRes.ok ? "sent" : "failed",
+      callback_response: callbackText.slice(0, 500),
+    }).eq("id", extOrder.id);
+
+    console.log("External callback sent:", { orderId, status: newStatus, ok: callbackRes.ok });
+  } catch (e) {
+    console.error("External callback error:", e);
+  }
 };
 
 const refundWalletIfNeeded = async (order: { id: string; user_id: string; amount: number; status: string }) => {
