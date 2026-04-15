@@ -239,6 +239,7 @@ export type Database = {
           package_id: string | null
           payment_method: string
           product_id: string | null
+          source_url: string | null
           status: string
           transaction_id: string | null
           updated_at: string
@@ -253,6 +254,7 @@ export type Database = {
           package_id?: string | null
           payment_method?: string
           product_id?: string | null
+          source_url?: string | null
           status?: string
           transaction_id?: string | null
           updated_at?: string
@@ -267,6 +269,7 @@ export type Database = {
           package_id?: string | null
           payment_method?: string
           product_id?: string | null
+          source_url?: string | null
           status?: string
           transaction_id?: string | null
           updated_at?: string

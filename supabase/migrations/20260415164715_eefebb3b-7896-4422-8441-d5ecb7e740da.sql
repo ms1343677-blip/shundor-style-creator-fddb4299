@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN source_url TEXT DEFAULT NULL;
