@@ -16,6 +16,8 @@ const Docs = () => {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [showCode, setShowCode] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "";
   const baseUrl = `https://${projectId}.supabase.co/functions/v1/external-order`;
