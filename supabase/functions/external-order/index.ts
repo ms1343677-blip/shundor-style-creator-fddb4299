@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const path = url.pathname.split("/").filter(Boolean);
-    // path: /external-order/create or /external-order/status
+    const action = path[path.length - 1] || "create";
 
     const apiKey = req.headers.get("x-api-key") || url.searchParams.get("api_key");
     if (!apiKey) {
@@ -41,8 +41,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const action = path[path.length - 1] || "create";
-
+    // ========== CREATE ORDER ==========
     if (req.method === "POST" && action === "create") {
       const body = await req.json();
       const { product_name, package_name, game_id, amount, external_order_id } = body;
@@ -53,6 +52,52 @@ Deno.serve(async (req) => {
         });
       }
 
+      const orderAmount = Number(amount);
+      if (isNaN(orderAmount) || orderAmount <= 0) {
+        return new Response(JSON.stringify({ success: false, error: "Invalid amount" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check developer's wallet balance
+      const { data: wallet, error: walletError } = await supabase
+        .from("wallets")
+        .select("id, balance")
+        .eq("user_id", app.user_id)
+        .single();
+
+      if (walletError || !wallet) {
+        return new Response(JSON.stringify({ success: false, error: "Wallet not found. Please deposit balance first." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (wallet.balance < orderAmount) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: "Insufficient balance",
+          current_balance: wallet.balance,
+          required: orderAmount,
+        }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Deduct balance
+      const newBalance = wallet.balance - orderAmount;
+      const { error: deductError } = await supabase
+        .from("wallets")
+        .update({ balance: newBalance })
+        .eq("id", wallet.id);
+
+      if (deductError) {
+        console.error("Balance deduct error:", deductError);
+        return new Response(JSON.stringify({ success: false, error: "Failed to deduct balance" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Create order
       const { data: order, error: orderError } = await supabase
         .from("external_orders")
         .insert({
@@ -61,13 +106,15 @@ Deno.serve(async (req) => {
           product_name,
           package_name: package_name || "",
           game_id,
-          amount,
+          amount: orderAmount,
           status: "pending",
         })
         .select()
         .single();
 
       if (orderError) {
+        // Refund if order creation fails
+        await supabase.from("wallets").update({ balance: wallet.balance }).eq("id", wallet.id);
         console.error("Order create error:", orderError);
         return new Response(JSON.stringify({ success: false, error: "Failed to create order" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -78,12 +125,14 @@ Deno.serve(async (req) => {
         success: true,
         order_id: order.id,
         status: order.status,
+        remaining_balance: newBalance,
         message: "Order created successfully",
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // ========== CHECK STATUS ==========
     if (req.method === "GET" && action === "status") {
       const orderId = url.searchParams.get("order_id");
       if (!orderId) {
@@ -110,7 +159,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Callback endpoint - admin updates order, triggers callback
+    // ========== BALANCE CHECK ==========
+    if (req.method === "GET" && action === "balance") {
+      const { data: wallet } = await supabase
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", app.user_id)
+        .single();
+
+      return new Response(JSON.stringify({
+        success: true,
+        balance: wallet?.balance || 0,
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ========== CALLBACK (admin triggers) ==========
     if (req.method === "POST" && action === "callback") {
       const body = await req.json();
       const { order_id, status: newStatus } = body;
@@ -121,7 +186,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Update order status
       const { data: order, error: updateError } = await supabase
         .from("external_orders")
         .update({ status: newStatus })
@@ -135,7 +199,22 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Send callback if URL is set
+      // If cancelled, refund to developer wallet
+      if (newStatus === "cancelled") {
+        const { data: wallet } = await supabase
+          .from("wallets")
+          .select("id, balance")
+          .eq("user_id", (order as any).developer_apps?.user_id)
+          .single();
+
+        if (wallet) {
+          await supabase.from("wallets").update({
+            balance: wallet.balance + order.amount,
+          }).eq("id", wallet.id);
+        }
+      }
+
+      // Send callback to developer's website
       const callbackUrl = (order as any).developer_apps?.callback_url;
       if (callbackUrl && callbackUrl.trim()) {
         try {
