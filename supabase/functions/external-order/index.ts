@@ -59,7 +59,39 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Create order (no balance check — API key valid is enough)
+      // Validate package_name or product_name against existing packages
+      const matchField = package_name || product_name;
+      const { data: matchedPkg, error: pkgError } = await supabase
+        .from("packages")
+        .select("id, name, product_variation_name, price, product_id")
+        .eq("is_active", true)
+        .ilike("product_variation_name", matchField)
+        .limit(1)
+        .maybeSingle();
+
+      if (!matchedPkg) {
+        // Try matching by package name field
+        const { data: matchedByName } = await supabase
+          .from("packages")
+          .select("id, name, product_variation_name, price, product_id")
+          .eq("is_active", true)
+          .ilike("name", matchField)
+          .limit(1)
+          .maybeSingle();
+
+        if (!matchedByName) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: `No matching package found for "${matchField}". Please use a valid product_variation_name or package name.` 
+          }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // Use matchedByName
+        var validPkg = matchedByName;
+      } else {
+        var validPkg = matchedPkg;
+      }
 
       const { data: order, error: orderError } = await supabase
         .from("external_orders")
