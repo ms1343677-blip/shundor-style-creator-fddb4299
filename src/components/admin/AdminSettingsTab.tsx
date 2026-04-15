@@ -220,6 +220,28 @@ const AdminSettingsTab = () => {
         })}
       </div>
 
+      {/* Google OAuth Callback URL */}
+      {activeSection === "general" && (
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-[11px] font-semibold text-foreground mb-1">Google OAuth Callback URL</p>
+          <p className="text-[10px] text-muted-foreground mb-2">Google Console এ এই URL টি Authorized redirect URI তে বসান</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-secondary text-foreground text-[11px] px-3 py-2 rounded-lg break-all select-all">
+              https://eyzgmqloxysarnamxmfu.supabase.co/auth/v1/callback
+            </code>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText("https://eyzgmqloxysarnamxmfu.supabase.co/auth/v1/callback");
+                toast({ title: "✅ কপি হয়েছে!" });
+              }}
+              className="shrink-0 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-[11px] font-semibold active:opacity-75"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Logo Preview */}
       {activeSection === "general" && settingsForm.logo_url && (
         <div className="bg-card rounded-xl border border-border p-4">
