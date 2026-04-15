@@ -140,6 +140,92 @@ export type Database = {
         }
         Relationships: []
       }
+      developer_apps: {
+        Row: {
+          api_key: string
+          app_name: string
+          callback_url: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key?: string
+          app_name?: string
+          callback_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          app_name?: string
+          callback_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      external_orders: {
+        Row: {
+          amount: number
+          callback_response: string | null
+          callback_status: string
+          created_at: string
+          developer_app_id: string
+          external_order_id: string | null
+          game_id: string
+          id: string
+          package_name: string
+          product_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          callback_response?: string | null
+          callback_status?: string
+          created_at?: string
+          developer_app_id: string
+          external_order_id?: string | null
+          game_id?: string
+          id?: string
+          package_name?: string
+          product_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          callback_response?: string | null
+          callback_status?: string
+          created_at?: string
+          developer_app_id?: string
+          external_order_id?: string | null
+          game_id?: string
+          id?: string
+          package_name?: string
+          product_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_orders_developer_app_id_fkey"
+            columns: ["developer_app_id"]
+            isOneToOne: false
+            referencedRelation: "developer_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           amount: number

@@ -13,6 +13,7 @@ import ProductDetail from "./pages/ProductDetail";
 import AdminPanel from "./pages/AdminPanel";
 import PaymentCallback from "./pages/PaymentCallback";
 import ManualPayment from "./pages/ManualPayment";
+import Docs from "./pages/Docs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/payment-callback" element={<PaymentCallback />} />
           <Route path="/manual-payment" element={<ManualPayment />} />
+          <Route path="/docs" element={<Docs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
