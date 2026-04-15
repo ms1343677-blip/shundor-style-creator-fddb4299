@@ -5,6 +5,72 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const getLinkedExternalOrder = async (adminClient: ReturnType<typeof createClient>, orderId: string) => {
+  const selectFields = "id, callback_url, external_order_id, product_name, package_name, game_id, amount";
+
+  const { data: linkedOrder } = await adminClient
+    .from("external_orders")
+    .select(selectFields)
+    .eq("internal_order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (linkedOrder) return linkedOrder;
+
+  const { data: legacyOrder } = await adminClient
+    .from("external_orders")
+    .select(selectFields)
+    .eq("external_order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return legacyOrder;
+};
+
+const forwardExternalOrderCallback = async (
+  adminClient: ReturnType<typeof createClient>,
+  orderId: string,
+  status: string,
+  deliveryMessage: string | null,
+) => {
+  const linkedOrder = await getLinkedExternalOrder(adminClient, orderId);
+  if (!linkedOrder) return;
+
+  await adminClient.from("external_orders").update({ status }).eq("id", linkedOrder.id);
+
+  if (!linkedOrder.callback_url || !linkedOrder.callback_url.trim()) return;
+
+  try {
+    const callbackRes = await fetch(linkedOrder.callback_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_id: linkedOrder.id,
+        external_order_id: linkedOrder.external_order_id,
+        status,
+        product_name: linkedOrder.product_name,
+        package_name: linkedOrder.package_name,
+        game_id: linkedOrder.game_id,
+        amount: linkedOrder.amount,
+        delivery_message: deliveryMessage,
+      }),
+    });
+
+    const callbackText = await callbackRes.text();
+    await adminClient.from("external_orders").update({
+      callback_status: callbackRes.ok ? "sent" : "failed",
+      callback_response: callbackText.slice(0, 500),
+    }).eq("id", linkedOrder.id);
+  } catch (error: any) {
+    await adminClient.from("external_orders").update({
+      callback_status: "failed",
+      callback_response: String(error?.message || "Callback send failed").slice(0, 500),
+    }).eq("id", linkedOrder.id);
+  }
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -29,7 +95,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Admin only" }), { status: 403, headers: corsHeaders });
     }
 
-    const { action, user_id, amount, role } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { action, user_id, amount, role, full_name, order_id, status, delivery_message } = body;
 
     if (action === "add_balance") {
       if (!user_id || !amount || amount <= 0) {
@@ -72,8 +139,48 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "update_order_status") {
+      if (!order_id || !status) {
+        return new Response(JSON.stringify({ error: "Invalid params" }), { status: 400, headers: corsHeaders });
+      }
+
+      const { data: order, error: orderError } = await adminClient
+        .from("orders")
+        .select("id, status, delivery_message")
+        .eq("id", order_id)
+        .single();
+
+      if (orderError || !order) {
+        return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
+      }
+
+      const nextDeliveryMessage = delivery_message !== undefined ? delivery_message : order.delivery_message;
+
+      const updates: Record<string, unknown> = { status };
+      if (delivery_message !== undefined) {
+        updates.delivery_message = delivery_message;
+      }
+
+      const { error: updateError } = await adminClient
+        .from("orders")
+        .update(updates)
+        .eq("id", order_id);
+
+      if (updateError) throw updateError;
+
+      await forwardExternalOrderCallback(
+        adminClient,
+        order_id,
+        status,
+        typeof nextDeliveryMessage === "string" ? nextDeliveryMessage : null,
+      );
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "update_profile") {
-      const { full_name } = await req.json().catch(() => ({}));
       if (!user_id) {
         return new Response(JSON.stringify({ error: "Invalid params" }), { status: 400, headers: corsHeaders });
       }

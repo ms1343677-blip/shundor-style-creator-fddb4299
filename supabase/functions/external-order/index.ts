@@ -121,13 +121,14 @@ Deno.serve(async (req) => {
         .from("external_orders")
         .insert({
           developer_app_id: app.id,
+          internal_order_id: realOrder.id,
           external_order_id: external_order_id || String(realOrder.id),
           product_name: product_name || validPkg.product_variation_name,
           package_name: validPkg.product_variation_name,
           game_id,
           amount: validPkg.price,
           status: "pending",
-          callback_url: callback_url || "",
+          callback_url: callback_url || app.callback_url || "",
         })
         .select()
         .single();
