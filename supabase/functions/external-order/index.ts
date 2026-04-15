@@ -215,8 +215,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send callback to developer's website
-      const callbackUrl = (order as any).developer_apps?.callback_url;
+      // Send callback to the website that sent this order
+      const callbackUrl = (order as any).callback_url;
       if (callbackUrl && callbackUrl.trim()) {
         try {
           const callbackRes = await fetch(callbackUrl, {
