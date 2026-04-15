@@ -93,32 +93,80 @@ Deno.serve(async (req) => {
         var validPkg = matchedPkg;
       }
 
-      const { data: order, error: orderError } = await supabase
+      // 1) Create real order in orders table (same as normal user)
+      const { data: realOrder, error: realOrderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: app.user_id,
+          product_id: validPkg.product_id,
+          package_id: validPkg.id,
+          game_id,
+          payment_method: "api",
+          amount: validPkg.price,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (realOrderError) {
+        console.error("Real order create error:", realOrderError);
+        return new Response(JSON.stringify({ success: false, error: "Failed to create order in orders table" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 2) Also track in external_orders for API logging
+      const { data: extOrder, error: extOrderError } = await supabase
         .from("external_orders")
         .insert({
           developer_app_id: app.id,
-          external_order_id: external_order_id || "",
+          external_order_id: external_order_id || String(realOrder.id),
           product_name: product_name || validPkg.product_variation_name,
           package_name: validPkg.product_variation_name,
           game_id,
-          amount: orderAmount || validPkg.price,
+          amount: validPkg.price,
           status: "pending",
           callback_url: callback_url || "",
         })
         .select()
         .single();
 
-      if (orderError) {
-        console.error("Order create error:", orderError);
-        return new Response(JSON.stringify({ success: false, error: "Failed to create order" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (extOrderError) {
+        console.error("External order log error:", extOrderError);
+      }
+
+      // 3) Trigger auto-topup if package has it enabled
+      const { data: fullPkg } = await supabase
+        .from("packages")
+        .select("auto_topup_enabled, auto_api_id")
+        .eq("id", validPkg.id)
+        .single();
+
+      if (fullPkg?.auto_topup_enabled && fullPkg?.auto_api_id) {
+        try {
+          const autoTopupUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-topup`;
+          await fetch(autoTopupUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              order_id: realOrder.id,
+              package_id: validPkg.id,
+              game_id,
+            }),
+          });
+        } catch (e) {
+          console.error("Auto-topup trigger error:", e);
+        }
       }
 
       return new Response(JSON.stringify({
         success: true,
-        order_id: order.id,
-        status: order.status,
+        order_id: realOrder.id,
+        external_order_id: extOrder?.id,
+        status: realOrder.status,
         message: "Order created successfully",
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
