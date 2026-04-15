@@ -401,6 +401,64 @@ Route::post('/topup/callback', [AutoTopupController::class, 'handleCallback']);`
             </div>
           </>
         )}
+
+        {/* API Logs Section */}
+        <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[14px] font-bold text-foreground flex items-center gap-2">
+              <ScrollText className="w-4 h-4 text-primary" /> 📊 API Logs
+            </h2>
+            <button
+              onClick={fetchLogs}
+              disabled={logsLoading}
+              className="text-[11px] text-primary font-bold flex items-center gap-1 active:opacity-60"
+            >
+              <RefreshCw className={`w-3 h-3 ${logsLoading ? "animate-spin" : ""}`} /> রিফ্রেশ
+            </button>
+          </div>
+
+          {logsLoading ? (
+            <p className="text-[12px] text-muted-foreground text-center py-4">লোড হচ্ছে...</p>
+          ) : logs.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground text-center py-4">কোনো অর্ডার নেই</p>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-auto">
+              {logs.map((log) => {
+                const statusColor: Record<string, string> = {
+                  completed: "bg-green-500/15 text-green-600",
+                  cancelled: "bg-destructive/10 text-destructive",
+                  pending: "bg-amber-500/15 text-amber-600",
+                  processing: "bg-primary/10 text-primary",
+                };
+                return (
+                  <div key={log.id} className="bg-secondary rounded-lg p-2.5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-foreground">{log.product_name}</span>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${statusColor[log.status] || statusColor.pending}`}>
+                        {log.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                      <div><span className="text-muted-foreground">Package:</span> <span className="text-foreground">{log.package_name || "—"}</span></div>
+                      <div><span className="text-muted-foreground">Amount:</span> <span className="text-foreground">৳{log.amount}</span></div>
+                      <div><span className="text-muted-foreground">Game ID:</span> <span className="text-foreground">{log.game_id}</span></div>
+                      <div><span className="text-muted-foreground">Callback:</span> <span className={`font-bold ${log.callback_status === 'sent' ? 'text-green-600' : log.callback_status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}>{log.callback_status}</span></div>
+                    </div>
+                    {log.callback_response && log.callback_status === 'failed' && (
+                      <div className="text-[9px] text-destructive bg-destructive/5 rounded p-1.5 mt-1">
+                        ❌ Error: {log.callback_response}
+                      </div>
+                    )}
+                    <div className="text-[9px] text-muted-foreground">
+                      {new Date(log.created_at).toLocaleString("bn-BD")} · ID: {log.id.slice(0, 8)}...
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
       <BottomNav />
     </div>
