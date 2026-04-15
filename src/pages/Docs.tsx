@@ -7,7 +7,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Key, Code, Send, CheckCircle, Wallet, AlertTriangle } from "lucide-react";
+import { Copy, Key, Code, Send, CheckCircle, Wallet, AlertTriangle, ScrollText, RefreshCw } from "lucide-react";
 
 const Docs = () => {
   const { user, isReady } = useAuth();
