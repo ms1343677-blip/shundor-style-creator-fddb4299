@@ -41,8 +41,6 @@ const sectionFields: Record<SettingsSection, { key: string; label: string; type:
   payment: [
     { key: "bkash_number", label: "bKash Number", type: "text" },
     { key: "nagad_number", label: "Nagad Number", type: "text" },
-    { key: "google_client_id", label: "Google Client ID (OAuth)", type: "text" },
-    { key: "uddoktapay_api_url", label: "UddoktaPay API URL", type: "text" },
   ],
   theme: [
     { key: "background_color", label: "Background Color (HSL)", type: "color" },
