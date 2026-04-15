@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // ========== CREATE ORDER ==========
     if (req.method === "POST" && action === "create") {
       const body = await req.json();
-      const { product_name, package_name, game_id, amount, external_order_id } = body;
+      const { product_name, package_name, game_id, amount, external_order_id, callback_url } = body;
 
       if (!product_name || !game_id || !amount) {
         return new Response(JSON.stringify({ success: false, error: "product_name, game_id, amount are required" }), {
@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
           game_id,
           amount: orderAmount,
           status: "pending",
+          callback_url: callback_url || "",
         })
         .select()
         .single();
@@ -214,8 +215,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send callback to developer's website
-      const callbackUrl = (order as any).developer_apps?.callback_url;
+      // Send callback to the website that sent this order
+      const callbackUrl = (order as any).callback_url;
       if (callbackUrl && callbackUrl.trim()) {
         try {
           const callbackRes = await fetch(callbackUrl, {

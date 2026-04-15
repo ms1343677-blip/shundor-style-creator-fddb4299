@@ -1,0 +1,1 @@
+ALTER TABLE public.external_orders ADD COLUMN callback_url text DEFAULT '';

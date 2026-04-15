@@ -15,7 +15,6 @@ const Docs = () => {
   const [app, setApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [callbackUrl, setCallbackUrl] = useState("");
   const [showCode, setShowCode] = useState(false);
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "";
@@ -38,7 +37,6 @@ const Docs = () => {
       .limit(1)
       .maybeSingle();
     setApp(data);
-    if (data?.callback_url) setCallbackUrl(data.callback_url);
     setLoading(false);
   };
 
@@ -47,7 +45,6 @@ const Docs = () => {
     const { error } = await supabase.from("developer_apps").insert({
       user_id: user!.id,
       app_name: "API Key",
-      callback_url: callbackUrl,
     });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -56,20 +53,6 @@ const Docs = () => {
       fetchApp();
     }
     setCreating(false);
-  };
-
-  const updateCallback = async () => {
-    if (!app) return;
-    const { error } = await supabase
-      .from("developer_apps")
-      .update({ callback_url: callbackUrl })
-      .eq("id", app.id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "✅ Callback URL আপডেট হয়েছে!" });
-      fetchApp();
-    }
   };
 
   const copyText = (text: string) => {
@@ -92,10 +75,12 @@ class OrderController extends Controller
 {
     private \\$apiUrl = '${baseUrl}';
     private \\$apiKey = '${apiKey}';
+    private \\$callbackUrl = 'https://yoursite.com/api/topup/callback'; // আপনার callback URL
 
     /**
      * অর্ডার ফরওয়ার্ড — আপনার সাইট থেকে TopUpYYY তে পাঠান
      * ব্যালেন্স থেকে টাকা অটো কাটবে
+     * অর্ডার complete/cancel হলে callback_url এ POST আসবে
      */
     public function forwardOrder(Request \\$request)
     {
@@ -106,6 +91,9 @@ class OrderController extends Controller
             'amount' => 'required|numeric|min:1',
             'external_order_id' => 'nullable|string',
         ]);
+
+        // callback_url যোগ করুন — এই URL-এ অর্ডার আপডেট আসবে
+        \\$validated['callback_url'] = \\$this->callbackUrl;
 
         \\$response = Http::withHeaders([
             'Content-Type' => 'application/json',
@@ -235,44 +223,19 @@ Route::post('/topup/callback', [AutoTopupController::class, 'handleCallback']);`
           {loading ? (
             <p className="text-[12px] text-muted-foreground">লোড হচ্ছে...</p>
           ) : app ? (
-            <div className="space-y-3">
-              <div className="bg-secondary rounded-lg p-3">
-                <p className="text-[10px] text-muted-foreground mb-1">আপনার Secret Key (একটি মাত্র):</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-[10px] text-primary font-mono flex-1 break-all">{app.api_key}</code>
-                  <button onClick={() => copyText(app.api_key)} className="p-1 active:opacity-60">
-                    <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[11px] text-muted-foreground mb-1.5">Callback URL (অর্ডার আপডেট পাঠাবে এখানে):</p>
-                <div className="flex gap-2">
-                  <Input
-                    value={callbackUrl}
-                    onChange={(e) => setCallbackUrl(e.target.value)}
-                    placeholder="https://yoursite.com/api/topup/callback"
-                    className="h-8 text-[12px] flex-1"
-                  />
-                  <Button size="sm" onClick={updateCallback} className="h-8 text-[11px]">
-                    সেভ
-                  </Button>
-                </div>
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-[10px] text-muted-foreground mb-1">আপনার Secret Key (একটি মাত্র):</p>
+              <div className="flex items-center gap-2">
+                <code className="text-[10px] text-primary font-mono flex-1 break-all">{app.api_key}</code>
+                <button onClick={() => copyText(app.api_key)} className="p-1 active:opacity-60">
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Input
-                value={callbackUrl}
-                onChange={(e) => setCallbackUrl(e.target.value)}
-                placeholder="Callback URL — https://yoursite.com/api/topup/callback"
-                className="h-9 text-[13px]"
-              />
-              <Button onClick={createApp} disabled={creating} className="w-full h-9 text-[13px] font-bold">
-                {creating ? "তৈরি হচ্ছে..." : "🔑 Secret Key Generate করুন"}
-              </Button>
-            </div>
+            <Button onClick={createApp} disabled={creating} className="w-full h-9 text-[13px] font-bold">
+              {creating ? "তৈরি হচ্ছে..." : "🔑 Secret Key Generate করুন"}
+            </Button>
           )}
         </div>
 
