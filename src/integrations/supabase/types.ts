@@ -297,6 +297,7 @@ export type Database = {
       }
       packages: {
         Row: {
+          api_tagline: string
           auto_api_id: string | null
           auto_topup_enabled: boolean
           created_at: string
@@ -310,6 +311,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          api_tagline?: string
           auto_api_id?: string | null
           auto_topup_enabled?: boolean
           created_at?: string
@@ -323,6 +325,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          api_tagline?: string
           auto_api_id?: string | null
           auto_topup_enabled?: boolean
           created_at?: string
