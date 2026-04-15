@@ -27,8 +27,33 @@ const Docs = () => {
   }, [isReady, user]);
 
   useEffect(() => {
-    if (user) fetchApp();
+    if (user) {
+      fetchApp();
+      fetchLogs();
+    }
   }, [user]);
+
+  const fetchLogs = async () => {
+    if (!user) return;
+    setLogsLoading(true);
+    // Get user's developer app first
+    const { data: devApp } = await supabase
+      .from("developer_apps")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (devApp) {
+      const { data } = await supabase
+        .from("external_orders")
+        .select("*")
+        .eq("developer_app_id", devApp.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setLogs(data || []);
+    }
+    setLogsLoading(false);
+  };
 
   const fetchApp = async () => {
     setLoading(true);
