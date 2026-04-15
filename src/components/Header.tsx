@@ -33,6 +33,7 @@ const Header = () => {
     { label: "My Codes", path: "/codes", icon: "🔑" },
     { label: "Transactions", path: "/orders", icon: "📊" },
     { label: "Add Money", path: "/add-money", icon: "💳" },
+    { label: "API Docs", path: "/docs", icon: "📄" },
     { label: "Contact Us", path: "/", icon: "📞" },
   ];
 
