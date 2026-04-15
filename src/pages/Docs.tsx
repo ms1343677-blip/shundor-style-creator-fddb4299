@@ -429,7 +429,7 @@ Route::post('/topup/callback', [AutoTopupController::class, 'handleCallback']);`
               <ScrollText className="w-4 h-4 text-primary" /> 📊 API Logs
             </h2>
             <button
-              onClick={fetchLogs}
+              onClick={() => fetchLogs()}
               disabled={logsLoading}
               className="text-[11px] text-primary font-bold flex items-center gap-1 active:opacity-60"
             >
