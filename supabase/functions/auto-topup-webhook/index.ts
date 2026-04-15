@@ -88,6 +88,32 @@ const getOrder = async (orderId: string) => {
   return data;
 };
 
+const getLinkedExternalOrder = async (orderId: string) => {
+  const selectFields = "id, callback_url, external_order_id, product_name, package_name, game_id, amount";
+
+  const { data: linkedOrder } = await supabaseAdmin
+    .from("external_orders")
+    .select(selectFields)
+    .eq("internal_order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (linkedOrder) {
+    return linkedOrder;
+  }
+
+  const { data: legacyOrder } = await supabaseAdmin
+    .from("external_orders")
+    .select(selectFields)
+    .eq("external_order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return legacyOrder;
+};
+
 const updateOrder = async (orderId: string, updates: Record<string, unknown>) => {
   const { error } = await supabaseAdmin.from("orders").update(updates).eq("id", orderId);
   if (error) throw error;
@@ -97,21 +123,20 @@ const updateOrder = async (orderId: string, updates: Record<string, unknown>) =>
 };
 
 const forwardExternalCallback = async (orderId: string, updates: Record<string, unknown>) => {
+  const extOrder = await getLinkedExternalOrder(orderId);
+
+  if (!extOrder) {
+    return;
+  }
+
   try {
-    // Find linked external_order by matching the real order id stored as external_order_id
-    const { data: extOrder } = await supabaseAdmin
-      .from("external_orders")
-      .select("id, callback_url, external_order_id, product_name, package_name, game_id, amount")
-      .eq("external_order_id", orderId)
-      .maybeSingle();
-
-    if (!extOrder || !extOrder.callback_url || !extOrder.callback_url.trim()) return;
-
     const newStatus = String(updates.status || "");
     if (!newStatus) return;
 
     // Update external_orders status too
     await supabaseAdmin.from("external_orders").update({ status: newStatus }).eq("id", extOrder.id);
+
+    if (!extOrder.callback_url || !extOrder.callback_url.trim()) return;
 
     // Send callback to source website
     const callbackRes = await fetch(extOrder.callback_url, {
@@ -136,6 +161,11 @@ const forwardExternalCallback = async (orderId: string, updates: Record<string, 
 
     console.log("External callback sent:", { orderId, status: newStatus, ok: callbackRes.ok });
   } catch (e) {
+    await supabaseAdmin.from("external_orders").update({
+      callback_status: "failed",
+      callback_response: (e as Error).message.slice(0, 500),
+    }).eq("id", extOrder.id);
+
     console.error("External callback error:", e);
   }
 };
