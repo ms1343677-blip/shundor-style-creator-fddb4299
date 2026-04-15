@@ -19,7 +19,7 @@ export function useSiteSettings() {
     staleTime: 60_000,
   });
 
-  // Apply dynamic CSS variables
+  // Apply dynamic CSS variables, title, favicon
   useEffect(() => {
     if (!settings) return;
     const root = document.documentElement;
@@ -31,6 +31,27 @@ export function useSiteSettings() {
       root.style.setProperty("--footer-bg", settings.nav_color);
     }
     if (settings.footer_color) root.style.setProperty("--footer-bg", settings.footer_color);
+
+    // Dynamic page title
+    if (settings.site_name) document.title = settings.site_name;
+
+    // Dynamic meta description
+    if (settings.meta_description) {
+      let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement;
+      if (meta) meta.content = settings.meta_description;
+    }
+
+    // Dynamic favicon
+    if (settings.favicon_url) {
+      let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = settings.favicon_url;
+    }
+
     return () => {
       root.style.removeProperty("--background");
       root.style.removeProperty("--primary");
