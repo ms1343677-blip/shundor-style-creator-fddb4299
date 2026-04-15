@@ -48,10 +48,16 @@ const Header = () => {
     <>
       <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center justify-between px-4 h-[56px] max-w-lg mx-auto">
-          <h1 className="text-[18px] font-black tracking-tight cursor-pointer select-none flex items-center gap-1" onClick={() => navigate("/")}>
-            <span className="text-destructive">{siteName.split(" ")[0]}</span>
-            <span className="text-foreground">{siteName.split(" ").slice(1).join(" ")}</span>
-          </h1>
+          <div className="cursor-pointer select-none flex items-center gap-2" onClick={() => navigate("/")}>
+            {logoUrl ? (
+              <img src={logoUrl} alt={siteName} className="h-8 object-contain" />
+            ) : (
+              <h1 className="text-[18px] font-black tracking-tight flex items-center gap-1">
+                <span className="text-destructive">{siteName.split(" ")[0]}</span>
+                <span className="text-foreground">{siteName.split(" ").slice(1).join(" ")}</span>
+              </h1>
+            )}
+          </div>
           <div className="flex items-center gap-2.5">
             {isReady && user ? (
               <>
