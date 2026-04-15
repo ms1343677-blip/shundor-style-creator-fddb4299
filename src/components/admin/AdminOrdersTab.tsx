@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, XCircle, MessageSquare, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Check, XCircle, MessageSquare, ChevronDown, ChevronUp, Send, Globe } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
