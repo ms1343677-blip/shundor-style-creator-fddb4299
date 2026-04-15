@@ -41,6 +41,7 @@ const AdminPanel = () => {
   const [pkgAutoTopup, setPkgAutoTopup] = useState(false);
   const [pkgAutoApiId, setPkgAutoApiId] = useState("");
   const [pkgVariationName, setPkgVariationName] = useState("");
+  const [pkgApiTagline, setPkgApiTagline] = useState("");
 
   // Banner form
   const [bannerTitle, setBannerTitle] = useState("");
@@ -242,7 +243,7 @@ const AdminPanel = () => {
   const savePackage = useMutation({
     mutationFn: async () => {
       if (!selectedProductId && !editingPackage) return;
-      const payload: any = { name: pkgName, price: parseFloat(pkgPrice), sort_order: pkgSortOrder, product_id: editingPackage?.product_id || selectedProductId!, auto_topup_enabled: pkgAutoTopup, auto_api_id: pkgAutoApiId || null, product_variation_name: pkgVariationName };
+      const payload: any = { name: pkgName, price: parseFloat(pkgPrice), sort_order: pkgSortOrder, product_id: editingPackage?.product_id || selectedProductId!, auto_topup_enabled: pkgAutoTopup, auto_api_id: pkgAutoApiId || null, product_variation_name: pkgVariationName, api_tagline: pkgApiTagline };
       if (editingPackage) {
         const { error } = await supabase.from("packages").update(payload).eq("id", editingPackage.id);
         if (error) throw error;
@@ -319,11 +320,11 @@ const AdminPanel = () => {
   });
 
   const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); setPCustomFields([{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}]); };
-  const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); setPkgAutoTopup(false); setPkgAutoApiId(""); setPkgVariationName(""); };
+  const resetPackageForm = () => { setEditingPackage(null); setPkgName(""); setPkgPrice(""); setPkgSortOrder(0); setPkgAutoTopup(false); setPkgAutoApiId(""); setPkgVariationName(""); setPkgApiTagline(""); };
   const resetBannerForm = () => { setEditingBanner(null); setBannerTitle(""); setBannerImageUrl(""); setBannerLinkUrl(""); setBannerSortOrder(0); };
 
   const startEditProduct = (p: any) => { setEditingProduct(p); setPName(p.name); setPCategoryId(p.category_id || ""); setPSubCategory(p.sub_category); setPImageUrl(p.image_url || ""); setPSortOrder(p.sort_order); setPCustomFields(typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : (p.custom_fields || [{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}])); };
-  const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); setPkgAutoTopup(p.auto_topup_enabled || false); setPkgAutoApiId(p.auto_api_id || ""); setPkgVariationName(p.product_variation_name || ""); };
+  const startEditPackage = (p: any) => { setEditingPackage(p); setPkgName(p.name); setPkgPrice(String(p.price)); setPkgSortOrder(p.sort_order); setPkgAutoTopup(p.auto_topup_enabled || false); setPkgAutoApiId(p.auto_api_id || ""); setPkgVariationName(p.product_variation_name || ""); setPkgApiTagline(p.api_tagline || ""); };
   const startEditBanner = (b: any) => { setEditingBanner(b); setBannerTitle(b.title); setBannerImageUrl(b.image_url); setBannerLinkUrl(b.link_url || ""); setBannerSortOrder(b.sort_order); };
 
   const handleLogout = async () => { await signOut(); navigate("/login"); };
@@ -575,8 +576,12 @@ const AdminPanel = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="text-[11px] text-muted-foreground mb-0.5 block">Product Variation Name</label>
+                          <label className="text-[11px] text-muted-foreground mb-0.5 block">Product Variation Name (API-তে পাঠানোর জন্য)</label>
                           <Input value={pkgVariationName} onChange={(e) => setPkgVariationName(e.target.value)} placeholder="25 Diamond" className="h-9 text-[13px]" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground mb-0.5 block">API Tagline (বাইরের সাইট থেকে ম্যাচ করতে)</label>
+                          <Input value={pkgApiTagline} onChange={(e) => setPkgApiTagline(e.target.value)} placeholder="ff25diamond" className="h-9 text-[13px]" />
                         </div>
                       </>
                     )}
