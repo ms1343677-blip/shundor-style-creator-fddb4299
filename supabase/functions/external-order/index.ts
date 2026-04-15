@@ -59,45 +59,8 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check developer's wallet balance
-      const { data: wallet, error: walletError } = await supabase
-        .from("wallets")
-        .select("id, balance")
-        .eq("user_id", app.user_id)
-        .single();
+      // Create order (no balance check — API key valid is enough)
 
-      if (walletError || !wallet) {
-        return new Response(JSON.stringify({ success: false, error: "Wallet not found. Please deposit balance first." }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      if (wallet.balance < orderAmount) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Insufficient balance",
-          current_balance: wallet.balance,
-          required: orderAmount,
-        }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Deduct balance
-      const newBalance = wallet.balance - orderAmount;
-      const { error: deductError } = await supabase
-        .from("wallets")
-        .update({ balance: newBalance })
-        .eq("id", wallet.id);
-
-      if (deductError) {
-        console.error("Balance deduct error:", deductError);
-        return new Response(JSON.stringify({ success: false, error: "Failed to deduct balance" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Create order
       const { data: order, error: orderError } = await supabase
         .from("external_orders")
         .insert({
