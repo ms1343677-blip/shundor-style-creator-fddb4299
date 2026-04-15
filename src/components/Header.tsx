@@ -12,6 +12,7 @@ const Header = () => {
   const { user, isReady, signOut } = useAuth();
   const { settings } = useSiteSettings();
   const siteName = settings.site_name || "RG BAZZER";
+  const logoUrl = settings.logo_url || "";
 
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
 
