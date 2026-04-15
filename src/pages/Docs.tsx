@@ -75,10 +75,12 @@ class OrderController extends Controller
 {
     private \\$apiUrl = '${baseUrl}';
     private \\$apiKey = '${apiKey}';
+    private \\$callbackUrl = 'https://yoursite.com/api/topup/callback'; // আপনার callback URL
 
     /**
      * অর্ডার ফরওয়ার্ড — আপনার সাইট থেকে TopUpYYY তে পাঠান
      * ব্যালেন্স থেকে টাকা অটো কাটবে
+     * অর্ডার complete/cancel হলে callback_url এ POST আসবে
      */
     public function forwardOrder(Request \\$request)
     {
@@ -89,6 +91,9 @@ class OrderController extends Controller
             'amount' => 'required|numeric|min:1',
             'external_order_id' => 'nullable|string',
         ]);
+
+        // callback_url যোগ করুন — এই URL-এ অর্ডার আপডেট আসবে
+        \\$validated['callback_url'] = \\$this->callbackUrl;
 
         \\$response = Http::withHeaders([
             'Content-Type' => 'application/json',
