@@ -98,10 +98,10 @@ Deno.serve(async (req) => {
         .insert({
           developer_app_id: app.id,
           external_order_id: external_order_id || "",
-          product_name,
-          package_name: package_name || "",
+          product_name: product_name || validPkg.product_variation_name,
+          package_name: validPkg.product_variation_name,
           game_id,
-          amount: orderAmount,
+          amount: orderAmount || validPkg.price,
           status: "pending",
           callback_url: callback_url || "",
         })
