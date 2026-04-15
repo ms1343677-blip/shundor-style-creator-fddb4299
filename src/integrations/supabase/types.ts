@@ -178,6 +178,7 @@ export type Database = {
           amount: number
           callback_response: string | null
           callback_status: string
+          callback_url: string | null
           created_at: string
           developer_app_id: string
           external_order_id: string | null
@@ -192,6 +193,7 @@ export type Database = {
           amount?: number
           callback_response?: string | null
           callback_status?: string
+          callback_url?: string | null
           created_at?: string
           developer_app_id: string
           external_order_id?: string | null
@@ -206,6 +208,7 @@ export type Database = {
           amount?: number
           callback_response?: string | null
           callback_status?: string
+          callback_url?: string | null
           created_at?: string
           developer_app_id?: string
           external_order_id?: string | null
