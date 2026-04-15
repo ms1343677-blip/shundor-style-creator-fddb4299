@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
           game_id,
           amount: orderAmount,
           status: "pending",
+          callback_url: callback_url || "",
         })
         .select()
         .single();
