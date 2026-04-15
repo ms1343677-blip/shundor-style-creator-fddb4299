@@ -160,20 +160,8 @@ Deno.serve(async (req) => {
         });
       }
 
-      // If cancelled, refund to developer wallet
-      if (newStatus === "cancelled") {
-        const { data: wallet } = await supabase
-          .from("wallets")
-          .select("id, balance")
-          .eq("user_id", (order as any).developer_apps?.user_id)
-          .single();
+      // No refund needed since balance is not deducted
 
-        if (wallet) {
-          await supabase.from("wallets").update({
-            balance: wallet.balance + order.amount,
-          }).eq("id", wallet.id);
-        }
-      }
 
       // Send callback to the website that sent this order
       const callbackUrl = (order as any).callback_url;
