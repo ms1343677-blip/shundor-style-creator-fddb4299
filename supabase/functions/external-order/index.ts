@@ -77,8 +77,6 @@ Deno.serve(async (req) => {
         .single();
 
       if (orderError) {
-        // Refund if order creation fails
-        await supabase.from("wallets").update({ balance: wallet.balance }).eq("id", wallet.id);
         console.error("Order create error:", orderError);
         return new Response(JSON.stringify({ success: false, error: "Failed to create order" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -89,7 +87,6 @@ Deno.serve(async (req) => {
         success: true,
         order_id: order.id,
         status: order.status,
-        remaining_balance: newBalance,
         message: "Order created successfully",
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
