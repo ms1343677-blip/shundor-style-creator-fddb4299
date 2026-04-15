@@ -10,10 +10,10 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
     const url = new URL(req.url);
@@ -61,19 +61,19 @@ Deno.serve(async (req) => {
 
       // Validate package_name or product_name against existing packages
       const matchField = package_name || product_name;
-      const { data: matchedPkg, error: pkgError } = await supabase
+      const { data: matchedPkg } = await supabase
         .from("packages")
-        .select("id, name, product_variation_name, price, product_id")
+        .select("id, name, product_variation_name, price, product_id, auto_topup_enabled, auto_api_id")
         .eq("is_active", true)
         .ilike("product_variation_name", matchField)
         .limit(1)
         .maybeSingle();
 
-      if (!matchedPkg) {
-        // Try matching by package name field
+      let validPkg = matchedPkg;
+      if (!validPkg) {
         const { data: matchedByName } = await supabase
           .from("packages")
-          .select("id, name, product_variation_name, price, product_id")
+          .select("id, name, product_variation_name, price, product_id, auto_topup_enabled, auto_api_id")
           .eq("is_active", true)
           .ilike("name", matchField)
           .limit(1)
@@ -87,13 +87,13 @@ Deno.serve(async (req) => {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        // Use matchedByName
-        var validPkg = matchedByName;
-      } else {
-        var validPkg = matchedPkg;
+        validPkg = matchedByName;
       }
 
-      // 1) Create real order in orders table (same as normal user)
+      // Extract source website from callback_url or referer
+      const sourceUrl = callback_url || req.headers.get("referer") || req.headers.get("origin") || "";
+
+      // 1) Create real order in orders table (same as normal user) with source_url
       const { data: realOrder, error: realOrderError } = await supabase
         .from("orders")
         .insert({
@@ -104,19 +104,20 @@ Deno.serve(async (req) => {
           payment_method: "api",
           amount: validPkg.price,
           status: "pending",
+          source_url: sourceUrl || null,
         })
         .select()
         .single();
 
       if (realOrderError) {
         console.error("Real order create error:", realOrderError);
-        return new Response(JSON.stringify({ success: false, error: "Failed to create order in orders table" }), {
+        return new Response(JSON.stringify({ success: false, error: "Failed to create order" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // 2) Also track in external_orders for API logging
-      const { data: extOrder, error: extOrderError } = await supabase
+      // 2) Track in external_orders for API logging + callback forwarding
+      const { data: extOrder } = await supabase
         .from("external_orders")
         .insert({
           developer_app_id: app.id,
@@ -131,32 +132,20 @@ Deno.serve(async (req) => {
         .select()
         .single();
 
-      if (extOrderError) {
-        console.error("External order log error:", extOrderError);
-      }
-
       // 3) Trigger auto-topup if package has it enabled
-      const { data: fullPkg } = await supabase
-        .from("packages")
-        .select("auto_topup_enabled, auto_api_id")
-        .eq("id", validPkg.id)
-        .single();
-
-      if (fullPkg?.auto_topup_enabled && fullPkg?.auto_api_id) {
+      if (validPkg.auto_topup_enabled && validPkg.auto_api_id) {
         try {
-          const autoTopupUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-topup`;
-          await fetch(autoTopupUrl, {
+          const autoTopupUrl = `${SUPABASE_URL}/functions/v1/auto-topup`;
+          const topupRes = await fetch(autoTopupUrl, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
             },
-            body: JSON.stringify({
-              order_id: realOrder.id,
-              package_id: validPkg.id,
-              game_id,
-            }),
+            body: JSON.stringify({ order_id: realOrder.id }),
           });
+          const topupData = await topupRes.text();
+          console.log("Auto-topup response:", topupData.substring(0, 300));
         } catch (e) {
           console.error("Auto-topup trigger error:", e);
         }
@@ -239,9 +228,6 @@ Deno.serve(async (req) => {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      // No refund needed since balance is not deducted
-
 
       // Send callback to the website that sent this order
       const callbackUrl = (order as any).callback_url;

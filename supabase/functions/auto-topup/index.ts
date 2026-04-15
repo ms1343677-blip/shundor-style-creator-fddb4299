@@ -39,8 +39,14 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) throw new Error("Unauthorized");
+    
+    // Accept service role key directly (for internal calls from external-order)
+    if (token === SUPABASE_SERVICE_ROLE_KEY) {
+      // Service role - no user auth needed
+    } else {
+      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !user) throw new Error("Unauthorized");
+    }
 
     const body = await req.json();
     const { order_id } = body;
