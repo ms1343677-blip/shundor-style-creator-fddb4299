@@ -15,7 +15,6 @@ const Docs = () => {
   const [app, setApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [callbackUrl, setCallbackUrl] = useState("");
   const [showCode, setShowCode] = useState(false);
 
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "";
@@ -38,7 +37,6 @@ const Docs = () => {
       .limit(1)
       .maybeSingle();
     setApp(data);
-    if (data?.callback_url) setCallbackUrl(data.callback_url);
     setLoading(false);
   };
 
@@ -47,7 +45,6 @@ const Docs = () => {
     const { error } = await supabase.from("developer_apps").insert({
       user_id: user!.id,
       app_name: "API Key",
-      callback_url: callbackUrl,
     });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
