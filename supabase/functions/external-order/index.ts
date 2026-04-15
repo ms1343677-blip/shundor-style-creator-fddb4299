@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // ========== CREATE ORDER ==========
     if (req.method === "POST" && action === "create") {
       const body = await req.json();
-      const { product_name, package_name, game_id, amount, external_order_id } = body;
+      const { product_name, package_name, game_id, amount, external_order_id, callback_url } = body;
 
       if (!product_name || !game_id || !amount) {
         return new Response(JSON.stringify({ success: false, error: "product_name, game_id, amount are required" }), {
