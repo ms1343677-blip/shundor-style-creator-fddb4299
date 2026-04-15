@@ -55,20 +55,6 @@ const Docs = () => {
     setCreating(false);
   };
 
-  const updateCallback = async () => {
-    if (!app) return;
-    const { error } = await supabase
-      .from("developer_apps")
-      .update({ callback_url: callbackUrl })
-      .eq("id", app.id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "✅ Callback URL আপডেট হয়েছে!" });
-      fetchApp();
-    }
-  };
-
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "📋 কপি হয়েছে!" });
