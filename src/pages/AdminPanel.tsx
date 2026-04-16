@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,110 +53,125 @@ const AdminPanel = () => {
   const [catSortOrder, setCatSortOrder] = useState(0);
   const [editingCategory, setEditingCategory] = useState<any>(null);
 
-  const [settingsForm, setSettingsForm] = useState<Record<string, string>>({});
-
   useEffect(() => {
     if (isReady && !user) navigate("/login");
   }, [isReady, user, navigate]);
 
-  // ─── Queries (all using api client) ────────────────────
+  // ─── Queries ────────────────────
   const { data: categories, refetch: refetchCategories } = useQuery({
     queryKey: ["admin-categories"],
-    queryFn: () => api.admin.getCategories(),
+    queryFn: async () => {
+      const { data } = await supabase.from("categories").select("*").order("sort_order");
+      return data || [];
+    },
     enabled: !!user,
   });
 
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
-    queryFn: () => api.admin.getProducts(),
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("*").order("sort_order");
+      return data || [];
+    },
     enabled: !!user,
   });
 
   const { data: packages } = useQuery({
     queryKey: ["admin-packages", selectedProductId],
-    queryFn: () => api.admin.getPackages(selectedProductId || undefined),
+    queryFn: async () => {
+      let q = supabase.from("packages").select("*, products(name)").order("sort_order");
+      if (selectedProductId) q = q.eq("product_id", selectedProductId);
+      const { data } = await q;
+      return data || [];
+    },
     enabled: !!user,
   });
 
   const { data: autoApis } = useQuery({
     queryKey: ["admin-auto-apis"],
-    queryFn: () => api.admin.getAutoApis(),
+    queryFn: async () => {
+      const { data } = await supabase.from("auto_apis").select("*");
+      return data || [];
+    },
     enabled: !!user,
   });
 
   const { data: orders, refetch: refetchOrders } = useQuery({
     queryKey: ["admin-orders"],
-    queryFn: () => api.admin.getOrders(),
-    enabled: !!user,
-  });
-
-  const { data: siteSettings } = useQuery({
-    queryKey: ["admin-site-settings"],
-    queryFn: () => api.admin.getSettings(),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*, products(name, image_url), packages(name)")
+        .order("created_at", { ascending: false });
+      return (data || []).map((o: any) => ({
+        ...o,
+        product_name: o.products?.name,
+        package_name: o.packages?.name,
+      }));
+    },
     enabled: !!user,
   });
 
   const { data: banners, refetch: refetchBanners } = useQuery({
     queryKey: ["admin-banners"],
-    queryFn: () => api.admin.getBanners(),
+    queryFn: async () => {
+      const { data } = await supabase.from("banners").select("*").order("sort_order");
+      return data || [];
+    },
     enabled: !!user,
   });
 
   const { data: wallets, refetch: refetchWallets } = useQuery({
     queryKey: ["admin-wallets"],
-    queryFn: () => api.admin.getWallets(),
+    queryFn: async () => {
+      const { data } = await supabase.from("wallets").select("*");
+      return data || [];
+    },
     enabled: !!user,
   });
 
   const { data: profiles } = useQuery({
     queryKey: ["admin-profiles"],
-    queryFn: () => api.admin.getProfiles(),
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*");
+      return data || [];
+    },
     enabled: !!user,
   });
 
-  // Ensure arrays
-  const catList = Array.isArray(categories) ? categories : [];
-  const prodList = Array.isArray(products) ? products : [];
-  const pkgList = Array.isArray(packages) ? packages : [];
-  const autoApiList = Array.isArray(autoApis) ? autoApis : [];
-  const orderList = Array.isArray(orders) ? orders : [];
-  const settingsList = Array.isArray(siteSettings) ? siteSettings : [];
-  const bannerList = Array.isArray(banners) ? banners : [];
-  const walletList = Array.isArray(wallets) ? wallets : [];
-  const profileList = Array.isArray(profiles) ? profiles : [];
+  const catList = categories || [];
+  const prodList = products || [];
+  const pkgList = packages || [];
+  const autoApiList = autoApis || [];
+  const orderList = orders || [];
+  const bannerList = banners || [];
+  const walletList = wallets || [];
+  const profileList = profiles || [];
 
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [addBalanceAmount, setAddBalanceAmount] = useState("");
   const [userSearchQuery, setUserSearchQuery] = useState("");
-
-  useEffect(() => {
-    if (settingsList.length) {
-      const map: Record<string, string> = {};
-      settingsList.forEach((s: any) => { map[s.key] = s.value; });
-      setSettingsForm(map);
-    }
-  }, [siteSettings]);
 
   // ─── Mutations ─────────────────────────────────────────
   const saveCategory = useMutation({
     mutationFn: async () => {
       const payload = { name: catName, image_url: catImageUrl || null, sort_order: catSortOrder };
       if (editingCategory) {
-        await api.admin.patchCategory(editingCategory.id, payload);
+        await supabase.from("categories").update(payload).eq("id", editingCategory.id);
       } else {
-        await api.admin.saveCategory(payload);
+        await supabase.from("categories").insert(payload);
       }
     },
     onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); resetCategoryForm(); toast({ title: "সফল!" }); },
   });
 
   const deleteCategory = useMutation({
-    mutationFn: (id: string) => api.admin.deleteCategory(id),
+    mutationFn: (id: string) => supabase.from("categories").delete().eq("id", id),
     onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); },
   });
 
   const toggleCategory = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.admin.patchCategory(id, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("categories").update({ is_active }).eq("id", id),
     onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); },
   });
 
@@ -168,21 +183,21 @@ const AdminPanel = () => {
       const selectedCat = catList.find((c: any) => c.id === pCategoryId);
       const payload: any = { name: pName, sub_category: pSubCategory, image_url: pImageUrl || null, sort_order: pSortOrder, category_id: pCategoryId || null, custom_fields: JSON.stringify(pCustomFields), category: selectedCat?.name || "Other" };
       if (editingProduct) {
-        await api.admin.patchProduct(editingProduct.id, payload);
+        await supabase.from("products").update(payload).eq("id", editingProduct.id);
       } else {
-        await api.admin.saveProduct(payload);
+        await supabase.from("products").insert(payload);
       }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-products"] }); resetProductForm(); toast({ title: "সফল!" }); },
   });
 
   const deleteProduct = useMutation({
-    mutationFn: (id: string) => api.admin.deleteProduct(id),
+    mutationFn: (id: string) => supabase.from("products").delete().eq("id", id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
   });
 
   const toggleProduct = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.admin.patchProduct(id, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("products").update({ is_active }).eq("id", id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
   });
 
@@ -191,27 +206,29 @@ const AdminPanel = () => {
       if (!selectedProductId && !editingPackage) return;
       const payload: any = { name: pkgName, price: parseFloat(pkgPrice), sort_order: pkgSortOrder, product_id: editingPackage?.product_id || selectedProductId!, auto_topup_enabled: pkgAutoTopup, auto_api_id: pkgAutoApiId || null, product_variation_name: pkgVariationName, api_tagline: pkgApiTagline };
       if (editingPackage) {
-        await api.admin.patchPackage(editingPackage.id, payload);
+        await supabase.from("packages").update(payload).eq("id", editingPackage.id);
       } else {
-        await api.admin.savePackage(payload);
+        await supabase.from("packages").insert(payload);
       }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-packages"] }); resetPackageForm(); toast({ title: "সফল!" }); },
   });
 
   const deletePackage = useMutation({
-    mutationFn: (id: string) => api.admin.deletePackage(id),
+    mutationFn: (id: string) => supabase.from("packages").delete().eq("id", id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-packages"] }),
   });
 
   const togglePackage = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.admin.patchPackage(id, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("packages").update({ is_active }).eq("id", id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-packages"] }),
   });
 
   const updateOrderStatus = useMutation({
     mutationFn: async ({ id, status, delivery_message }: { id: string; status: string; delivery_message?: string }) => {
-      await api.admin.patchOrder(id, { status, delivery_message });
+      const update: any = { status };
+      if (delivery_message !== undefined) update.delivery_message = delivery_message;
+      await supabase.from("orders").update(update).eq("id", id);
     },
     onSuccess: () => refetchOrders(),
   });
@@ -220,31 +237,22 @@ const AdminPanel = () => {
     mutationFn: async () => {
       const payload = { title: bannerTitle, image_url: bannerImageUrl, link_url: bannerLinkUrl, sort_order: bannerSortOrder };
       if (editingBanner) {
-        await api.admin.patchBanner(editingBanner.id, payload);
+        await supabase.from("banners").update(payload).eq("id", editingBanner.id);
       } else {
-        await api.admin.saveBanner(payload);
+        await supabase.from("banners").insert(payload);
       }
     },
     onSuccess: () => { refetchBanners(); resetBannerForm(); toast({ title: "সফল!" }); },
   });
 
   const deleteBanner = useMutation({
-    mutationFn: (id: string) => api.admin.deleteBanner(id),
+    mutationFn: (id: string) => supabase.from("banners").delete().eq("id", id),
     onSuccess: () => refetchBanners(),
   });
 
   const toggleBanner = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => api.admin.patchBanner(id, { is_active }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("banners").update({ is_active }).eq("id", id),
     onSuccess: () => refetchBanners(),
-  });
-
-  const saveSettings = useMutation({
-    mutationFn: () => api.admin.saveSettings(settingsForm),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-site-settings"] });
-      queryClient.invalidateQueries({ queryKey: ["site-settings"] });
-      toast({ title: "সেটিংস সেভ হয়েছে!" });
-    },
   });
 
   const resetProductForm = () => { setEditingProduct(null); setPName(""); setPCategoryId(""); setPSubCategory("Top up"); setPImageUrl(""); setPSortOrder(0); setPCustomFields([{key: "game_id", label: "এখানে গেমের আইডি দিন", placeholder: "গেম আইডি"}]); };
@@ -261,7 +269,6 @@ const AdminPanel = () => {
   if (!user) return null;
 
   const displayName = user.full_name || user.email?.split("@")[0] || "Admin";
-
   const pendingOrderCount = orderList.filter((o: any) => o.status === "pending").length;
 
   const sidebarItems: { id: Tab; label: string; icon: any; badge?: number }[] = [
@@ -276,35 +283,6 @@ const AdminPanel = () => {
     { id: "webhook-sms", label: "Webhook SMS", icon: MessageSquare },
     { id: "payment", label: "Payment", icon: Wallet },
     { id: "settings", label: "Settings", icon: Settings },
-  ];
-
-  const settingsFields = [
-    { key: "site_name", label: "Site Name", type: "text" },
-    { key: "notice_text", label: "Notice Text", type: "textarea" },
-    { key: "notice_enabled", label: "Notice Enabled", type: "toggle" },
-    { key: "whatsapp_number", label: "WhatsApp Number", type: "text" },
-    { key: "telegram_link", label: "Telegram Link", type: "text" },
-    { key: "facebook_link", label: "Facebook Link", type: "text" },
-    { key: "bkash_number", label: "bKash Number", type: "text" },
-    { key: "nagad_number", label: "Nagad Number", type: "text" },
-    { key: "support_hours", label: "Support Hours", type: "text" },
-    { key: "background_color", label: "Background Color (HSL)", type: "color" },
-    { key: "primary_color", label: "Primary Color (HSL)", type: "color" },
-    { key: "notice_color", label: "Notice Color (HSL)", type: "color" },
-    { key: "nav_color", label: "Header Color (HSL)", type: "color" },
-    { key: "footer_color", label: "Footer Color (HSL)", type: "color" },
-  ];
-
-  const colorPresets = [
-    { label: "White", value: "0 0% 100%" },
-    { label: "Light", value: "0 0% 95%" },
-    { label: "Green", value: "145 63% 32%" },
-    { label: "Blue", value: "220 70% 50%" },
-    { label: "Purple", value: "270 60% 50%" },
-    { label: "Red", value: "0 70% 50%" },
-    { label: "Orange", value: "25 90% 50%" },
-    { label: "Teal", value: "180 60% 35%" },
-    { label: "Dark", value: "220 30% 15%" },
   ];
 
   const getCategoryName = (categoryId: string | null) => {
@@ -526,7 +504,7 @@ const AdminPanel = () => {
                     <div key={pkg.id} className="px-4 py-2.5 flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-medium text-foreground">{pkg.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{pkg.product_name || pkg.products?.name}{pkg.auto_topup_enabled && <span className="ml-1 text-primary">⚡ Auto</span>}</p>
+                        <p className="text-[10px] text-muted-foreground">{pkg.products?.name}{pkg.auto_topup_enabled && <span className="ml-1 text-primary">⚡ Auto</span>}</p>
                       </div>
                       <span className="text-[13px] font-bold text-primary">৳{pkg.price}</span>
                       <Switch checked={pkg.is_active} onCheckedChange={(v) => togglePackage.mutate({ id: pkg.id, is_active: v })} />
@@ -582,7 +560,12 @@ const AdminPanel = () => {
                           const amt = parseFloat(addBalanceAmount);
                           if (!amt || amt <= 0) return;
                           try {
-                            await api.admin.addBalance(selectedUser, amt);
+                            const { data: w } = await supabase.from("wallets").select("balance").eq("user_id", selectedUser).maybeSingle();
+                            if (w) {
+                              await supabase.from("wallets").update({ balance: Number(w.balance) + amt }).eq("user_id", selectedUser);
+                            } else {
+                              await supabase.from("wallets").insert({ user_id: selectedUser, balance: amt });
+                            }
                             toast({ title: `৳${amt} added!` });
                             setAddBalanceAmount("");
                             refetchWallets();
@@ -702,26 +685,18 @@ const AdminPanel = () => {
 const WebhookSmsTab = ({ user }: { user: any }) => {
   const queryClient = useQueryClient();
   const [viewMessage, setViewMessage] = useState<any>(null);
-  const [editingMsg, setEditingMsg] = useState<any>(null);
-  const [editSender, setEditSender] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editTrxId, setEditTrxId] = useState("");
-  const [editAmount, setEditAmount] = useState("");
-  const [addSender, setAddSender] = useState("bKash");
-  const [addPhone, setAddPhone] = useState("");
-  const [addTrxId, setAddTrxId] = useState("");
-  const [addAmount, setAddAmount] = useState("");
-  const [addingMsg, setAddingMsg] = useState(false);
   const [filterSender, setFilterSender] = useState<string>("All");
-  const [filterStatus, setFilterStatus] = useState<string>("All");
 
-  const { data: smsData, refetch: refetchMessages } = useQuery({
+  const { data: smsMessages, refetch: refetchMessages } = useQuery({
     queryKey: ["admin-sms"],
-    queryFn: () => api.admin.getSms(),
+    queryFn: async () => {
+      const { data } = await supabase.from("sms_messages").select("*").order("created_at", { ascending: false }).limit(100);
+      return data || [];
+    },
     enabled: !!user,
   });
 
-  const smsMessages = Array.isArray(smsData) ? smsData : [];
+  const messages = smsMessages || [];
 
   return (
     <div className="space-y-3">
@@ -729,32 +704,13 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
         <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2 mb-3">
           <MessageSquare className="w-4 h-4" /> SMS Messages
         </h3>
-        <p className="text-[11px] text-muted-foreground">SMS webhook ম্যানেজমেন্ট আপনার হোস্টিং সার্ভারে কাজ করবে।</p>
+        <p className="text-[11px] text-muted-foreground">SMS webhook থেকে আসা মেসেজগুলো এখানে দেখুন।</p>
       </div>
 
-      {/* Edit Message Modal */}
-      {editingMsg && (
-        <div className="bg-card rounded-xl border-2 border-primary p-4 space-y-2">
-          <h3 className="text-[13px] font-bold text-foreground flex items-center gap-2"><Pencil className="w-4 h-4" /> Edit Message</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <select value={editSender} onChange={(e) => setEditSender(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-[12px]">
-              <option value="bKash">bKash</option><option value="Nagad">Nagad</option><option value="Rocket">Rocket</option>
-            </select>
-            <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone" className="h-9 text-[12px]" />
-            <Input value={editTrxId} onChange={(e) => setEditTrxId(e.target.value)} placeholder="TrxID" className="h-9 text-[12px]" />
-            <Input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} type="number" placeholder="Amount" className="h-9 text-[12px]" />
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => setEditingMsg(null)}>Cancel</Button>
-          </div>
-        </div>
-      )}
-
-      {/* SMS Messages List */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-[13px] font-bold text-foreground">Store Messages ({smsMessages.length})</h3>
+            <h3 className="text-[13px] font-bold text-foreground">Store Messages ({messages.length})</h3>
             <button onClick={() => refetchMessages()} className="p-1.5 active:bg-secondary rounded-lg"><RefreshCw className="w-3.5 h-3.5 text-muted-foreground" /></button>
           </div>
           <div className="flex gap-1.5 flex-wrap">
@@ -767,9 +723,8 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
           </div>
         </div>
         <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
-          {smsMessages.filter((msg: any) => {
+          {messages.filter((msg: any) => {
             if (filterSender !== "All" && msg.sender !== filterSender) return false;
-            if (filterStatus !== "All" && msg.status !== filterStatus) return false;
             return true;
           }).map((msg: any) => (
             <div key={msg.id} className="px-4 py-3">
@@ -795,7 +750,7 @@ const WebhookSmsTab = ({ user }: { user: any }) => {
               )}
             </div>
           ))}
-          {!smsMessages.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No messages received yet</div>}
+          {!messages.length && <div className="p-6 text-center text-muted-foreground text-[12px]">No messages received yet</div>}
         </div>
       </div>
     </div>
@@ -808,11 +763,14 @@ const PaymentTab = ({ user }: { user: any }) => {
 
   const { data: siteSettings } = useQuery({
     queryKey: ["admin-site-settings"],
-    queryFn: () => api.admin.getSettings(),
+    queryFn: async () => {
+      const { data } = await supabase.from("site_settings").select("*");
+      return data || [];
+    },
     enabled: !!user,
   });
 
-  const settingsList = Array.isArray(siteSettings) ? siteSettings : [];
+  const settingsList = siteSettings || [];
 
   const [bkashNum, setBkashNum] = useState("");
   const [nagadNum, setNagadNum] = useState("");
@@ -828,7 +786,14 @@ const PaymentTab = ({ user }: { user: any }) => {
 
   const savePaymentNumbers = async () => {
     try {
-      await api.admin.saveSettings({ bkash_number: bkashNum, nagad_number: nagadNum });
+      for (const [key, value] of Object.entries({ bkash_number: bkashNum, nagad_number: nagadNum })) {
+        const { data: existing } = await supabase.from("site_settings").select("id").eq("key", key).maybeSingle();
+        if (existing) {
+          await supabase.from("site_settings").update({ value }).eq("key", key);
+        } else {
+          await supabase.from("site_settings").insert({ key, value, label: key });
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["admin-site-settings"] });
       queryClient.invalidateQueries({ queryKey: ["site-settings"] });
       toast({ title: "পেমেন্ট নাম্বার সেভ হয়েছে!" });
