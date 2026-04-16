@@ -334,12 +334,14 @@ const AdminPanel = () => {
 
   const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin";
 
-  const sidebarItems: { id: Tab; label: string; icon: any }[] = [
+  const pendingOrderCount = orders?.filter((o: any) => o.status === "pending").length || 0;
+
+  const sidebarItems: { id: Tab; label: string; icon: any; badge?: number }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "categories", label: "Categories", icon: FolderOpen },
     { id: "products", label: "Products", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
-    { id: "orders", label: "Orders", icon: ShoppingCart },
+    { id: "orders", label: "Orders", icon: ShoppingCart, badge: pendingOrderCount },
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
     { id: "auto-api", label: "Auto API", icon: Zap },
@@ -398,6 +400,7 @@ const AdminPanel = () => {
             <button key={item.id} onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] ${activeTab === item.id ? "bg-primary text-primary-foreground font-semibold" : "text-nav-foreground/80 active:bg-nav-foreground/10"}`}>
               <item.icon className="w-4 h-4" /> {item.label}
+              {item.badge ? <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold">{item.badge}</span> : null}
             </button>
           ))}
         </nav>
@@ -614,7 +617,7 @@ const AdminPanel = () => {
           )}
 
           {/* ORDERS */}
-          {activeTab === "orders" && <AdminOrdersTab orders={orders} updateOrderStatus={updateOrderStatus} />}
+          {activeTab === "orders" && <AdminOrdersTab orders={orders} updateOrderStatus={updateOrderStatus} refetchOrders={refetchOrders} />}
 
           {/* USERS */}
           {activeTab === "users" && (
