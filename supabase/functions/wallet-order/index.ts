@@ -23,6 +23,8 @@ Deno.serve(async (req) => {
 
     if (!product_id || !package_id || !game_id) throw new Error("Missing required fields");
 
+    // Check if user has 'api' role
+    const { data: hasApiRole } = await supabaseAdmin.rpc("has_role", { _user_id: user.id, _role: "api" });
 
     // Get package price
     const { data: pkg, error: pkgError } = await supabaseAdmin
@@ -32,7 +34,29 @@ Deno.serve(async (req) => {
       .single();
     if (pkgError || !pkg) throw new Error("Package not found");
 
-    // Get wallet
+    if (hasApiRole) {
+      // API role: no wallet deduction, direct order
+      const { data: order, error: orderError } = await supabaseAdmin
+        .from("orders")
+        .insert({
+          user_id: user.id,
+          product_id,
+          package_id,
+          game_id,
+          payment_method: "api",
+          amount: pkg.price,
+          status: "pending",
+        })
+        .select()
+        .single();
+      if (orderError) throw orderError;
+
+      return new Response(JSON.stringify({ success: true, order }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Normal user: check wallet balance
     const { data: wallet, error: walletError } = await supabaseAdmin
       .from("wallets")
       .select("*")
@@ -42,7 +66,7 @@ Deno.serve(async (req) => {
 
     if (wallet.balance < pkg.price) throw new Error("Insufficient balance");
 
-    // Deduct and create order atomically
+    // Deduct and create order
     const { error: updateError } = await supabaseAdmin
       .from("wallets")
       .update({ balance: wallet.balance - pkg.price })
