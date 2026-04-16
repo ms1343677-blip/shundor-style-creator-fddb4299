@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -13,6 +14,14 @@ const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { user, isReady } = useAuth();
+
+  // If user is already logged in, redirect to home
+  useEffect(() => {
+    if (isReady && user) {
+      navigate("/", { replace: true });
+    }
+  }, [isReady, user, navigate]);
 
   const handleSubmit = async () => {
     setLoading(true);
