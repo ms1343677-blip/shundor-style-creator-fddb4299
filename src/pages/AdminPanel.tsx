@@ -334,12 +334,14 @@ const AdminPanel = () => {
 
   const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin";
 
-  const sidebarItems: { id: Tab; label: string; icon: any }[] = [
+  const pendingOrderCount = orders?.filter((o: any) => o.status === "pending").length || 0;
+
+  const sidebarItems: { id: Tab; label: string; icon: any; badge?: number }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "categories", label: "Categories", icon: FolderOpen },
     { id: "products", label: "Products", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
-    { id: "orders", label: "Orders", icon: ShoppingCart, badge: orders?.filter((o: any) => o.status === "pending").length || 0 },
+    { id: "orders", label: "Orders", icon: ShoppingCart, badge: pendingOrderCount },
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
     { id: "auto-api", label: "Auto API", icon: Zap },
