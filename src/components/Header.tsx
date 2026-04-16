@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
 const Header = () => {
@@ -14,16 +14,11 @@ const Header = () => {
   const siteName = settings.site_name || "RG BAZZER";
   const logoUrl = settings.logo_url || "";
 
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+  const avatarUrl = user?.avatar_url || null;
 
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
-    queryFn: async () => {
-      await supabase.rpc("ensure_wallet");
-      const { data, error } = await supabase.from("wallets").select("*").eq("user_id", user!.id).single();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.getWallet(),
     enabled: !!user,
   });
 
@@ -38,12 +33,12 @@ const Header = () => {
   ];
 
   const handleLogout = async () => {
-    await signOut();
+    signOut();
     setMenuOpen(false);
     navigate("/login");
   };
 
-  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+  const displayName = user?.full_name || user?.email?.split("@")[0] || "User";
 
   return (
     <>
@@ -67,7 +62,7 @@ const Header = () => {
                   className="flex items-center gap-1.5 bg-primary text-primary-foreground h-9 px-4 rounded-full text-[13px] font-bold active:opacity-80"
                 >
                   <Wallet className="w-3.5 h-3.5" />
-                  {wallet?.balance?.toFixed(0) || "0"}৳
+                  {wallet?.balance ? Number(wallet.balance).toFixed(0) : "0"}৳
                 </button>
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}

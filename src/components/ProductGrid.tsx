@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import ffTopup from "@/assets/ff-topup.jpg";
 import { useState } from "react";
 
@@ -10,28 +10,12 @@ const ProductGrid = () => {
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.getCategories(),
   });
 
   const { data: products } = useQuery({
     queryKey: ["products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.getProducts(),
   });
 
   if (!products || products.length === 0) {
@@ -42,7 +26,6 @@ const ProductGrid = () => {
     );
   }
 
-  // Group products by category_id, fallback to old category text
   const getCategoryName = (product: any) => {
     if (product.category_id && categories) {
       const cat = categories.find((c: any) => c.id === product.category_id);
@@ -51,13 +34,11 @@ const ProductGrid = () => {
     return product.category || "Other";
   };
 
-  const categoryNames = [...new Set(products.map((p) => getCategoryName(p)))];
+  const categoryNames: string[] = [...new Set(products.map((p: any) => getCategoryName(p)))] as string[];
 
   const handleClick = (id: string) => {
     setPressedId(id);
-    setTimeout(() => {
-      navigate(`/product/${id}`);
-    }, 200);
+    setTimeout(() => { navigate(`/product/${id}`); }, 200);
   };
 
   return (
@@ -67,28 +48,13 @@ const ProductGrid = () => {
           <h2 className="text-center text-[18px] font-black text-primary mb-3">{cat}</h2>
           <div className="grid grid-cols-3 gap-x-2 gap-y-3">
             {products
-              .filter((p) => getCategoryName(p) === cat)
-              .map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => handleClick(p.id)}
-                  className="flex flex-col items-center text-center"
-                >
-                  <div
-                    className={`w-[90%] aspect-square rounded-xl overflow-hidden bg-card transition-transform duration-200 ${
-                      pressedId === p.id ? "scale-90" : "scale-100"
-                    }`}
-                  >
-                    <img
-                      src={p.image_url || ffTopup}
-                      alt={p.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
+              .filter((p: any) => getCategoryName(p) === cat)
+              .map((p: any) => (
+                <button key={p.id} onClick={() => handleClick(p.id)} className="flex flex-col items-center text-center">
+                  <div className={`w-[90%] aspect-square rounded-xl overflow-hidden bg-card transition-transform duration-200 ${pressedId === p.id ? "scale-90" : "scale-100"}`}>
+                    <img src={p.image_url || ffTopup} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-[11px] font-bold text-foreground mt-1.5 leading-tight line-clamp-2 px-0.5">
-                    {p.name}
-                  </p>
+                  <p className="text-[11px] font-bold text-foreground mt-1.5 leading-tight line-clamp-2 px-0.5">{p.name}</p>
                 </button>
               ))}
           </div>

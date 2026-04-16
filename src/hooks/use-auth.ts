@@ -1,28 +1,40 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import { api } from "@/lib/api";
+
+export interface AppUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  is_admin: boolean;
+  avatar_url: string | null;
+}
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(api.getStoredUser());
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    const token = api.getToken();
+    if (!token) {
+      setUser(null);
       setIsReady(true);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    return () => subscription.unsubscribe();
+      return;
+    }
+    api.getMe()
+      .then((data) => {
+        setUser(data.user);
+        localStorage.setItem("auth_user", JSON.stringify(data.user));
+      })
+      .catch(() => {
+        api.logout();
+        setUser(null);
+      })
+      .finally(() => setIsReady(true));
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signOut = () => {
+    api.logout();
+    setUser(null);
   };
 
   return { user, isReady, signOut };

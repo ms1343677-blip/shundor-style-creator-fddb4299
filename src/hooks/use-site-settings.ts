@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
+import { api } from "@/lib/api";
 
 export type SiteSettings = Record<string, string>;
 
@@ -8,18 +8,15 @@ export function useSiteSettings() {
   const { data: settings, ...rest } = useQuery({
     queryKey: ["site-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("key, value");
-      if (error) throw error;
-      const map: SiteSettings = {};
-      data?.forEach((r: any) => { map[r.key] = r.value; });
-      return map;
+      try {
+        return await api.getSettings();
+      } catch {
+        return {};
+      }
     },
     staleTime: 60_000,
   });
 
-  // Apply dynamic CSS variables, title, favicon
   useEffect(() => {
     if (!settings) return;
     const root = document.documentElement;
@@ -31,27 +28,16 @@ export function useSiteSettings() {
       root.style.setProperty("--footer-bg", settings.nav_color);
     }
     if (settings.footer_color) root.style.setProperty("--footer-bg", settings.footer_color);
-
-    // Dynamic page title
     if (settings.site_name) document.title = settings.site_name;
-
-    // Dynamic meta description
     if (settings.meta_description) {
-      let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement;
+      const meta = document.querySelector('meta[name="description"]') as HTMLMetaElement;
       if (meta) meta.content = settings.meta_description;
     }
-
-    // Dynamic favicon
     if (settings.favicon_url) {
       let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-      if (!link) {
-        link = document.createElement("link");
-        link.rel = "icon";
-        document.head.appendChild(link);
-      }
+      if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
       link.href = settings.favicon_url;
     }
-
     return () => {
       root.style.removeProperty("--background");
       root.style.removeProperty("--primary");
