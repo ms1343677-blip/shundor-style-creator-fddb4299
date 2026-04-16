@@ -12,13 +12,15 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 };
 
 const LatestOrders = () => {
-  const { data: orders } = useQuery({
+  const { data: ordersRaw } = useQuery({
     queryKey: ["latest-orders"],
     queryFn: () => api.getLatestOrders(),
     staleTime: 30_000,
   });
 
-  const lastUpdated = orders?.[0]?.updated_at
+  const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
+
+  const lastUpdated = orders[0]?.updated_at
     ? formatDistanceToNow(new Date(orders[0].updated_at), { locale: bn, addSuffix: true })
     : null;
 

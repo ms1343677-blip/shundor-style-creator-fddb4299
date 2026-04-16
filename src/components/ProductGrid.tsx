@@ -8,17 +8,20 @@ const ProductGrid = () => {
   const navigate = useNavigate();
   const [pressedId, setPressedId] = useState<string | null>(null);
 
-  const { data: categories } = useQuery({
+  const { data: categoriesRaw } = useQuery({
     queryKey: ["categories"],
     queryFn: () => api.getCategories(),
   });
 
-  const { data: products } = useQuery({
+  const { data: productsRaw } = useQuery({
     queryKey: ["products"],
     queryFn: () => api.getProducts(),
   });
 
-  if (!products || products.length === 0) {
+  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : [];
+  const products = Array.isArray(productsRaw) ? productsRaw : [];
+
+  if (products.length === 0) {
     return (
       <section className="px-3 py-6 max-w-lg mx-auto text-center text-muted-foreground text-sm">
         কোনো প্রোডাক্ট নেই।
