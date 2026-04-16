@@ -166,12 +166,12 @@ const AdminPanel = () => {
   });
 
   const deleteCategory = useMutation({
-    mutationFn: (id: string) => supabase.from("categories").delete().eq("id", id),
+    mutationFn: async (id: string) => { await supabase.from("categories").delete().eq("id", id); },
     onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); },
   });
 
   const toggleCategory = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("categories").update({ is_active }).eq("id", id),
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => { await supabase.from("categories").update({ is_active }).eq("id", id); },
     onSuccess: () => { refetchCategories(); queryClient.invalidateQueries({ queryKey: ["categories"] }); },
   });
 
@@ -192,12 +192,12 @@ const AdminPanel = () => {
   });
 
   const deleteProduct = useMutation({
-    mutationFn: (id: string) => supabase.from("products").delete().eq("id", id),
+    mutationFn: async (id: string) => { await supabase.from("products").delete().eq("id", id); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
   });
 
   const toggleProduct = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("products").update({ is_active }).eq("id", id),
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => { await supabase.from("products").update({ is_active }).eq("id", id); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
   });
 
@@ -215,12 +215,12 @@ const AdminPanel = () => {
   });
 
   const deletePackage = useMutation({
-    mutationFn: (id: string) => supabase.from("packages").delete().eq("id", id),
+    mutationFn: async (id: string) => { await supabase.from("packages").delete().eq("id", id); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-packages"] }),
   });
 
   const togglePackage = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("packages").update({ is_active }).eq("id", id),
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => { await supabase.from("packages").update({ is_active }).eq("id", id); },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-packages"] }),
   });
 
@@ -246,12 +246,12 @@ const AdminPanel = () => {
   });
 
   const deleteBanner = useMutation({
-    mutationFn: (id: string) => supabase.from("banners").delete().eq("id", id),
+    mutationFn: async (id: string) => { await supabase.from("banners").delete().eq("id", id); },
     onSuccess: () => refetchBanners(),
   });
 
   const toggleBanner = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => supabase.from("banners").update({ is_active }).eq("id", id),
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => { await supabase.from("banners").update({ is_active }).eq("id", id); },
     onSuccess: () => refetchBanners(),
   });
 
