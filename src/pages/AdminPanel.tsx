@@ -614,7 +614,7 @@ const AdminPanel = () => {
           )}
 
           {/* ORDERS */}
-          {activeTab === "orders" && <AdminOrdersTab orders={orders} updateOrderStatus={updateOrderStatus} />}
+          {activeTab === "orders" && <AdminOrdersTab orders={orders} updateOrderStatus={updateOrderStatus} refetchOrders={refetchOrders} />}
 
           {/* USERS */}
           {activeTab === "users" && (
