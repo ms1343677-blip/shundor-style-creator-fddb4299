@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 import heroBanner from "@/assets/hero-banner.jpg";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { useState, useEffect, useRef } from "react";
 
@@ -17,18 +17,11 @@ const Index = () => {
 
   const { data: banners } = useQuery({
     queryKey: ["banners"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("banners")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.getBanners(),
   });
 
-  const slides = banners && banners.length > 0 ? banners : null;
+  const bannerList = Array.isArray(banners) ? banners : [];
+  const slides = bannerList.length > 0 ? bannerList : null;
 
   useEffect(() => {
     if (!slides || slides.length <= 1) return;
@@ -43,7 +36,6 @@ const Index = () => {
       <Header />
       <NoticeBar />
       <div className="max-w-lg mx-auto mt-2 px-3">
-        {/* Banner/Slider */}
         <div className="relative overflow-hidden">
           {slides ? (
             <>
