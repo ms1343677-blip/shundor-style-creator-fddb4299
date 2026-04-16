@@ -339,7 +339,7 @@ const AdminPanel = () => {
     { id: "categories", label: "Categories", icon: FolderOpen },
     { id: "products", label: "Products", icon: Package },
     { id: "packages", label: "Packages", icon: Layers },
-    { id: "orders", label: "Orders", icon: ShoppingCart },
+    { id: "orders", label: "Orders", icon: ShoppingCart, badge: orders?.filter((o: any) => o.status === "pending").length || 0 },
     { id: "users", label: "Users", icon: Users },
     { id: "banners", label: "Banners", icon: Image },
     { id: "auto-api", label: "Auto API", icon: Zap },
