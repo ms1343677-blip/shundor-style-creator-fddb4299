@@ -683,7 +683,7 @@ const AdminPanel = () => {
                     <div>
                       <label className="text-[11px] text-muted-foreground mb-1 block">Change Role</label>
                       <div className="flex gap-1.5">
-                        {(["user", "admin", "moderator"] as const).map((r) => (
+                        {(["user", "admin", "api", "moderator"] as const).map((r) => (
                           <button
                             key={r}
                             onClick={async () => {
