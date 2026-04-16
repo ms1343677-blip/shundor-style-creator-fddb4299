@@ -3,7 +3,7 @@ import BottomNav from "@/components/BottomNav";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Wallet, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -19,12 +19,7 @@ const AddMoney = () => {
 
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
-    queryFn: async () => {
-      await supabase.rpc("ensure_wallet");
-      const { data, error } = await supabase.from("wallets").select("*").eq("user_id", user!.id).single();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.getWallet(),
     enabled: !!user,
   });
 
@@ -32,12 +27,7 @@ const AddMoney = () => {
     if (!user) { navigate("/login"); return; }
     const amt = parseFloat(amount);
     if (!amt || amt < 10) { toast({ title: "ন্যূনতম ১০ টাকা দিন", variant: "destructive" }); return; }
-
-    // Navigate to manual payment page
-    const params = new URLSearchParams({
-      amount: String(amt),
-      type: "add_money",
-    });
+    const params = new URLSearchParams({ amount: String(amt), type: "add_money" });
     navigate(`/manual-payment?${params.toString()}`);
   };
 
@@ -45,47 +35,27 @@ const AddMoney = () => {
     <div className="min-h-screen bg-background pb-14">
       <Header />
       <div className="max-w-lg mx-auto px-3 py-4 space-y-3">
-        {/* Balance Card */}
         <div className="bg-nav rounded-xl p-4 text-center">
           <Wallet className="w-8 h-8 text-primary mx-auto mb-1" />
           <p className="text-[11px] text-nav-foreground/60 font-medium">Current Balance</p>
-          <p className="text-2xl font-black text-nav-foreground">৳{wallet?.balance?.toFixed(2) || "0.00"}</p>
+          <p className="text-2xl font-black text-nav-foreground">৳{wallet?.balance ? Number(wallet.balance).toFixed(2) : "0.00"}</p>
         </div>
 
-        {/* Add Money */}
         <div className="bg-card rounded-xl border border-border p-4">
           <h2 className="text-[14px] font-bold text-foreground mb-3 flex items-center gap-2">
             <Plus className="w-4 h-4 text-primary" /> Add Money
           </h2>
-
-          {/* Preset amounts */}
           <div className="grid grid-cols-3 gap-1.5 mb-3">
             {presets.map((p) => (
-              <button
-                key={p}
-                onClick={() => setAmount(String(p))}
-                className={`border rounded-lg py-2 text-[13px] font-semibold active:opacity-75 ${
-                  amount === String(p) ? "border-primary bg-primary/5 text-primary" : "border-border text-foreground"
-                }`}
-              >
+              <button key={p} onClick={() => setAmount(String(p))}
+                className={`border rounded-lg py-2 text-[13px] font-semibold active:opacity-75 ${amount === String(p) ? "border-primary bg-primary/5 text-primary" : "border-border text-foreground"}`}>
                 ৳{p}
               </button>
             ))}
           </div>
-
-          <Input
-            placeholder="অন্য পরিমাণ লিখুন (min ১০৳)"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="text-[13px] h-10 mb-3"
-          />
-
-          <button
-            onClick={handleAddMoney}
-            disabled={loading}
-            className="w-full bg-primary text-primary-foreground h-11 rounded-xl text-[14px] font-bold active:opacity-80 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
+          <Input placeholder="অন্য পরিমাণ লিখুন (min ১০৳)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="text-[13px] h-10 mb-3" />
+          <button onClick={handleAddMoney} disabled={loading}
+            className="w-full bg-primary text-primary-foreground h-11 rounded-xl text-[14px] font-bold active:opacity-80 disabled:opacity-50 flex items-center justify-center gap-2">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? "Processing..." : "Add Money"}
           </button>

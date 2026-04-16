@@ -2,47 +2,33 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Wallet, ShoppingBag, RefreshCw } from "lucide-react";
 
 const Profile = () => {
   const { user, isReady } = useAuth();
-
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+  const avatarUrl = user?.avatar_url || null;
 
   const { data: wallet, refetch } = useQuery({
     queryKey: ["wallet"],
-    queryFn: async () => {
-      await supabase.rpc("ensure_wallet");
-      const { data, error } = await supabase.from("wallets").select("*").eq("user_id", user!.id).single();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.getWallet(),
     enabled: !!user,
   });
 
-  const { data: orderCount } = useQuery({
+  const { data: orderData } = useQuery({
     queryKey: ["order-count"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("orders")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user!.id);
-      if (error) throw error;
-      return count || 0;
-    },
+    queryFn: () => api.getOrderCount(),
     enabled: !!user,
   });
 
   if (!isReady) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">Loading...</div>;
 
-  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+  const displayName = user?.full_name || user?.email?.split("@")[0] || "User";
 
   return (
     <div className="min-h-screen bg-background pb-14">
       <Header />
       <div className="max-w-lg mx-auto px-3 py-4 space-y-3">
-        {/* Profile Card */}
         <div className="bg-primary rounded-2xl p-5 text-center">
           <div className="w-16 h-16 rounded-full mx-auto mb-2 overflow-hidden border-3 border-primary-foreground/30">
             {avatarUrl ? (
@@ -57,7 +43,6 @@ const Profile = () => {
           <p className="text-[11px] text-primary-foreground/60">{user?.email}</p>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-2.5">
           <div className="bg-card rounded-2xl border border-border p-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -66,7 +51,7 @@ const Profile = () => {
             <div>
               <p className="text-[11px] text-muted-foreground">Balance</p>
               <p className="text-base font-black text-foreground flex items-center gap-1">
-                ৳{wallet?.balance?.toFixed(0) || "0"}
+                ৳{wallet?.balance ? Number(wallet.balance).toFixed(0) : "0"}
                 <RefreshCw className="w-3 h-3 text-muted-foreground cursor-pointer" onClick={() => refetch()} />
               </p>
             </div>
@@ -77,12 +62,11 @@ const Profile = () => {
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground">Orders</p>
-              <p className="text-base font-black text-foreground">{orderCount ?? 0}</p>
+              <p className="text-base font-black text-foreground">{orderData?.count ?? 0}</p>
             </div>
           </div>
         </div>
 
-        {/* Account Info */}
         <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
           {[
             { label: "Email", value: user?.email || "-" },
