@@ -24,7 +24,7 @@ const LatestOrders = () => {
     ? formatDistanceToNow(new Date(orders[0].updated_at), { locale: bn, addSuffix: true })
     : null;
 
-  if (!orders?.length) return null;
+  if (!orders.length) return null;
 
   return (
     <section className="max-w-lg mx-auto px-3 py-4">
