@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -23,7 +23,10 @@ const AutoApiTab = ({ user }: { user: any }) => {
 
   const { data: autoApis, refetch } = useQuery({
     queryKey: ["admin-auto-apis"],
-    queryFn: () => api.admin.getAutoApis(),
+    queryFn: async () => {
+      const { data } = await supabase.from("auto_apis").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
     enabled: !!user,
   });
 
@@ -32,13 +35,17 @@ const AutoApiTab = ({ user }: { user: any }) => {
 
   const save = async () => {
     try {
-      await api.admin.saveAutoApi({ id: editing?.id, name, base_url: baseUrl, api_key: apiKey, api_type: apiType });
+      if (editing) {
+        await supabase.from("auto_apis").update({ name, base_url: baseUrl, api_key: apiKey, api_type: apiType }).eq("id", editing.id);
+      } else {
+        await supabase.from("auto_apis").insert({ name, base_url: baseUrl, api_key: apiKey, api_type: apiType });
+      }
       resetForm(); refetch(); toast({ title: "সফল!" });
     } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
   };
 
   const remove = async (id: string) => {
-    try { await api.admin.deleteAutoApi(id); refetch(); } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
+    try { await supabase.from("auto_apis").delete().eq("id", id); refetch(); } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
   };
 
   const getTypeInfo = (type: string) => API_TYPES.find(t => t.value === type) || API_TYPES[0];

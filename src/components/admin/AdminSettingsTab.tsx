@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -64,21 +64,30 @@ const AdminSettingsTab = () => {
   const { data: siteSettings } = useQuery({
     queryKey: ["admin-site-settings"],
     queryFn: async () => {
-      const data = await api.admin.getSettings();
-      return data;
+      const { data } = await supabase.from("site_settings").select("*");
+      return data || [];
     },
   });
 
   useEffect(() => {
     if (siteSettings) {
       const map: Record<string, string> = {};
-      siteSettings.forEach((s: any) => { map[s.key_name] = s.value; });
+      siteSettings.forEach((s: any) => { map[s.key] = s.value; });
       setSettingsForm(map);
     }
   }, [siteSettings]);
 
   const saveSettings = useMutation({
-    mutationFn: () => api.admin.saveSettings(settingsForm),
+    mutationFn: async () => {
+      for (const [key, value] of Object.entries(settingsForm)) {
+        const { data: existing } = await supabase.from("site_settings").select("id").eq("key", key).maybeSingle();
+        if (existing) {
+          await supabase.from("site_settings").update({ value }).eq("key", key);
+        } else {
+          await supabase.from("site_settings").insert({ key, value, label: key });
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-site-settings"] });
       queryClient.invalidateQueries({ queryKey: ["site-settings"] });

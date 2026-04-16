@@ -3,7 +3,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, XCircle, MessageSquare, ChevronDown, ChevronUp, Send, Globe, Search, Trash2, Package } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
 
 const statusConfig: Record<string, { label: string; color: string; bgCard: string }> = {
   pending: { label: "Pending", color: "bg-notice/20 text-notice-foreground", bgCard: "border-l-notice" },
