@@ -34,7 +34,7 @@ const ProductGrid = () => {
     return product.category || "Other";
   };
 
-  const categoryNames = [...new Set(products.map((p: any) => getCategoryName(p)))];
+  const categoryNames: string[] = [...new Set(products.map((p: any) => getCategoryName(p)))] as string[];
 
   const handleClick = (id: string) => {
     setPressedId(id);
