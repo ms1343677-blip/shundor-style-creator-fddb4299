@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Input } from "@/components/ui/input";
@@ -42,14 +42,17 @@ const ManualPayment = () => {
     setLoading(true);
     setErrorMsg("");
     try {
-      const data = await api.verifyPayment({
-        transaction_id: trxId.trim(),
-        amount: parseFloat(amount),
-        product_id: productId,
-        package_id: packageId,
-        game_id: gameId,
-        type,
+      const { data, error } = await supabase.functions.invoke("verify-manual-payment", {
+        body: {
+          transaction_id: trxId.trim(),
+          amount: parseFloat(amount),
+          product_id: productId,
+          package_id: packageId,
+          game_id: gameId,
+          type,
+        },
       });
+      if (error) throw error;
       setErrorMsg("");
       toast({ title: "✅ " + (data?.message || "সফল!") });
       if (type === "add_money") navigate("/add-money");

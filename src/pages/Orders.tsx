@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Package, MessageSquare } from "lucide-react";
 
@@ -19,7 +19,19 @@ const Orders = () => {
 
   const { data: orders } = useQuery({
     queryKey: ["my-orders"],
-    queryFn: () => api.getOrders(),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*, products(name, image_url), packages(name)")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      return (data || []).map((o: any) => ({
+        ...o,
+        product_name: o.products?.name,
+        product_image: o.products?.image_url,
+        package_name: o.packages?.name,
+      }));
+    },
     enabled: !!user,
   });
 

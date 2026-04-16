@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { useState } from "react";
@@ -22,19 +22,28 @@ const ProductDetail = () => {
 
   const { data: product } = useQuery({
     queryKey: ["product", id],
-    queryFn: () => api.getProduct(id!),
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("*").eq("id", id!).single();
+      return data;
+    },
     enabled: !!id,
   });
 
   const { data: packages } = useQuery({
     queryKey: ["packages", id],
-    queryFn: () => api.getPackages(id!),
+    queryFn: async () => {
+      const { data } = await supabase.from("packages").select("*").eq("product_id", id!).eq("is_active", true).order("sort_order");
+      return data || [];
+    },
     enabled: !!id,
   });
 
   const { data: wallet, refetch: refetchWallet } = useQuery({
     queryKey: ["wallet"],
-    queryFn: () => api.getWallet(),
+    queryFn: async () => {
+      const { data } = await supabase.from("wallets").select("balance").eq("user_id", user!.id).maybeSingle();
+      return data;
+    },
     enabled: !!user,
   });
 
@@ -71,7 +80,10 @@ const ProductDetail = () => {
           setLoading(false);
           return;
         }
-        await api.createOrder({ product_id: id, package_id: selectedPackage, game_id: gameIdValue, payment_method: "wallet" });
+        const { error } = await supabase.functions.invoke("wallet-order", {
+          body: { product_id: id, package_id: selectedPackage, game_id: gameIdValue },
+        });
+        if (error) throw error;
         toast({ title: "অর্ডার সফল! ✅" });
         refetchWallet();
         navigate("/orders");
