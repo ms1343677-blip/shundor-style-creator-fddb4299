@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 import heroBanner from "@/assets/hero-banner.jpg";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { useState, useEffect, useRef } from "react";
 
@@ -17,11 +17,13 @@ const Index = () => {
 
   const { data: banners } = useQuery({
     queryKey: ["banners"],
-    queryFn: () => api.getBanners(),
+    queryFn: async () => {
+      const { data } = await supabase.from("banners").select("*").eq("is_active", true).order("sort_order");
+      return data || [];
+    },
   });
 
-  const bannerList = Array.isArray(banners) ? banners : [];
-  const slides = bannerList.length > 0 ? bannerList : null;
+  const slides = banners && banners.length > 0 ? banners : null;
 
   useEffect(() => {
     if (!slides || slides.length <= 1) return;

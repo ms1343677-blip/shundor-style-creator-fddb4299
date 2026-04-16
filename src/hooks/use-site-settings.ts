@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 export type SiteSettings = Record<string, string>;
 
@@ -8,11 +8,13 @@ export function useSiteSettings() {
   const { data: settings, ...rest } = useQuery({
     queryKey: ["site-settings"],
     queryFn: async () => {
-      try {
-        return await api.getSettings();
-      } catch {
-        return {};
-      }
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("key, value");
+      if (error) return {};
+      const map: Record<string, string> = {};
+      (data || []).forEach((s) => { map[s.key] = s.value; });
+      return map;
     },
     staleTime: 60_000,
   });

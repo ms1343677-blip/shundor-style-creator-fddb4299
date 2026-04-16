@@ -1,6 +1,6 @@
 import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { bn } from "date-fns/locale";
 
@@ -12,19 +12,32 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 };
 
 const LatestOrders = () => {
-  const { data: ordersRaw } = useQuery({
+  const { data: orders } = useQuery({
     queryKey: ["latest-orders"],
-    queryFn: () => api.getLatestOrders(),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*, products(name, image_url), packages(name), profiles!orders_user_id_fkey(full_name, email)")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      return (data || []).map((o: any) => ({
+        ...o,
+        product_name: o.products?.name,
+        package_name: o.packages?.name,
+        full_name: o.profiles?.full_name,
+        profile_email: o.profiles?.email,
+      }));
+    },
     staleTime: 30_000,
   });
 
-  const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
+  const orderList = orders || [];
 
-  const lastUpdated = orders[0]?.updated_at
-    ? formatDistanceToNow(new Date(orders[0].updated_at), { locale: bn, addSuffix: true })
+  const lastUpdated = orderList[0]?.updated_at
+    ? formatDistanceToNow(new Date(orderList[0].updated_at), { locale: bn, addSuffix: true })
     : null;
 
-  if (!orders.length) return null;
+  if (!orderList.length) return null;
 
   return (
     <section className="max-w-lg mx-auto px-3 py-4">
@@ -36,9 +49,8 @@ const LatestOrders = () => {
           </p>
         )}
         <div className="space-y-2.5">
-          {orders.map((order: any) => {
+          {orderList.map((order: any) => {
             const name = order.full_name || order.profile_email?.split("@")[0] || "User";
-            const initial = name.charAt(0).toUpperCase();
             const status = statusConfig[order.status] || statusConfig.pending;
             const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=80&bold=true`;
 
