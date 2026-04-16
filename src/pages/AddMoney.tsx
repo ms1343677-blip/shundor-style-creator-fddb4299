@@ -3,7 +3,7 @@ import BottomNav from "@/components/BottomNav";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Wallet, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -19,7 +19,10 @@ const AddMoney = () => {
 
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
-    queryFn: () => api.getWallet(),
+    queryFn: async () => {
+      const { data } = await supabase.from("wallets").select("balance").eq("user_id", user!.id).maybeSingle();
+      return data;
+    },
     enabled: !!user,
   });
 

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
 const Header = () => {
@@ -18,7 +18,10 @@ const Header = () => {
 
   const { data: wallet } = useQuery({
     queryKey: ["wallet"],
-    queryFn: () => api.getWallet(),
+    queryFn: async () => {
+      const { data } = await supabase.from("wallets").select("balance").eq("user_id", user!.id).maybeSingle();
+      return data;
+    },
     enabled: !!user,
   });
 
@@ -33,7 +36,7 @@ const Header = () => {
   ];
 
   const handleLogout = async () => {
-    signOut();
+    await signOut();
     setMenuOpen(false);
     navigate("/login");
   };

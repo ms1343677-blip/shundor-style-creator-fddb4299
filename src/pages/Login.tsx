@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
@@ -17,18 +17,28 @@ const Login = () => {
     setLoading(true);
     try {
       if (isRegister) {
-        await api.register(email, password);
-        toast({ title: "সফল!", description: "একাউন্ট তৈরি হয়েছে। এখন লগইন করুন।" });
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        toast({ title: "সফল!", description: "ইমেইল ভেরিফাই করুন, তারপর লগইন করুন।" });
         setIsRegister(false);
       } else {
-        await api.login(email, password);
-        window.location.href = "/";
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        navigate("/");
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
   };
 
   return (
@@ -59,6 +69,14 @@ const Login = () => {
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {loading ? "Loading..." : isRegister ? "Register" : "Login"}
+            </button>
+
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full border border-border text-foreground h-11 rounded-xl text-[13px] font-bold active:opacity-80 flex items-center justify-center gap-2"
+            >
+              <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="" />
+              Google দিয়ে লগইন
             </button>
           </div>
 

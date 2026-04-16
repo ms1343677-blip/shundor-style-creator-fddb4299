@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { Wallet, ShoppingBag, RefreshCw } from "lucide-react";
 
 const Profile = () => {
@@ -11,13 +11,19 @@ const Profile = () => {
 
   const { data: wallet, refetch } = useQuery({
     queryKey: ["wallet"],
-    queryFn: () => api.getWallet(),
+    queryFn: async () => {
+      const { data } = await supabase.from("wallets").select("balance").eq("user_id", user!.id).maybeSingle();
+      return data;
+    },
     enabled: !!user,
   });
 
   const { data: orderData } = useQuery({
     queryKey: ["order-count"],
-    queryFn: () => api.getOrderCount(),
+    queryFn: async () => {
+      const { count } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq("user_id", user!.id);
+      return { count: count || 0 };
+    },
     enabled: !!user,
   });
 

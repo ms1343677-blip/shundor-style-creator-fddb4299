@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import ffTopup from "@/assets/ff-topup.jpg";
 import { useState } from "react";
 
@@ -8,20 +8,23 @@ const ProductGrid = () => {
   const navigate = useNavigate();
   const [pressedId, setPressedId] = useState<string | null>(null);
 
-  const { data: categoriesRaw } = useQuery({
+  const { data: categories } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => api.getCategories(),
+    queryFn: async () => {
+      const { data } = await supabase.from("categories").select("*").eq("is_active", true).order("sort_order");
+      return data || [];
+    },
   });
 
-  const { data: productsRaw } = useQuery({
+  const { data: products } = useQuery({
     queryKey: ["products"],
-    queryFn: () => api.getProducts(),
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("*").eq("is_active", true).order("sort_order");
+      return data || [];
+    },
   });
 
-  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : [];
-  const products = Array.isArray(productsRaw) ? productsRaw : [];
-
-  if (products.length === 0) {
+  if (!products?.length) {
     return (
       <section className="px-3 py-6 max-w-lg mx-auto text-center text-muted-foreground text-sm">
         কোনো প্রোডাক্ট নেই।
