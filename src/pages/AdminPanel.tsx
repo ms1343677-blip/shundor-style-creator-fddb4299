@@ -562,12 +562,11 @@ const AdminPanel = () => {
                           const amt = parseFloat(addBalanceAmount);
                           if (!amt || amt <= 0) return;
                           try {
-                            const { data: w } = await supabase.from("wallets").select("balance").eq("user_id", selectedUser).maybeSingle();
-                            if (w) {
-                              await supabase.from("wallets").update({ balance: Number(w.balance) + amt }).eq("user_id", selectedUser);
-                            } else {
-                              await supabase.from("wallets").insert({ user_id: selectedUser, balance: amt });
-                            }
+                            const { data, error } = await supabase.functions.invoke("admin-user", {
+                              body: { action: "add_balance", user_id: selectedUser, amount: amt },
+                            });
+                            if (error) throw error;
+                            if (data?.error) throw new Error(data.error);
                             toast({ title: `৳${amt} added!` });
                             setAddBalanceAmount("");
                             refetchWallets();
