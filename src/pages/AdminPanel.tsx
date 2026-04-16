@@ -226,9 +226,11 @@ const AdminPanel = () => {
 
   const updateOrderStatus = useMutation({
     mutationFn: async ({ id, status, delivery_message }: { id: string; status: string; delivery_message?: string }) => {
-      const update: any = { status };
-      if (delivery_message !== undefined) update.delivery_message = delivery_message;
-      await supabase.from("orders").update(update).eq("id", id);
+      const { data, error } = await supabase.functions.invoke("admin-user", {
+        body: { action: "update_order_status", order_id: id, status, delivery_message },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => refetchOrders(),
   });
