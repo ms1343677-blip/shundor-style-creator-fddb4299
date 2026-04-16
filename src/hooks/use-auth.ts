@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface AppUser {
@@ -13,55 +13,48 @@ export function useAuth() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const u = session.user;
-        // Check admin role
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", u.id)
-          .eq("role", "admin")
-          .maybeSingle();
+  const buildAppUser = useCallback(async (authUser: any) => {
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authUser.id)
+      .eq("role", "admin")
+      .maybeSingle();
 
-        const appUser: AppUser = {
-          id: u.id,
-          email: u.email || "",
-          full_name: u.user_metadata?.full_name || u.user_metadata?.name || null,
-          is_admin: !!roleData,
-          avatar_url: u.user_metadata?.avatar_url || null,
-        };
-        setUser(appUser);
+    const appUser: AppUser = {
+      id: authUser.id,
+      email: authUser.email || "",
+      full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || null,
+      is_admin: !!roleData,
+      avatar_url: authUser.user_metadata?.avatar_url || null,
+    };
+    setUser(appUser);
+  }, []);
+
+  useEffect(() => {
+    // Get initial session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        buildAppUser(session.user).finally(() => setIsReady(true));
+      } else {
+        setIsReady(true);
+      }
+    });
+
+    // Listen for auth changes - DO NOT await inside callback
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        // Use setTimeout to avoid deadlock - never await inside onAuthStateChange
+        setTimeout(() => {
+          buildAppUser(session.user);
+        }, 0);
       } else {
         setUser(null);
       }
-      setIsReady(true);
-    });
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const u = session.user;
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", u.id)
-          .eq("role", "admin")
-          .maybeSingle();
-
-        setUser({
-          id: u.id,
-          email: u.email || "",
-          full_name: u.user_metadata?.full_name || u.user_metadata?.name || null,
-          is_admin: !!roleData,
-          avatar_url: u.user_metadata?.avatar_url || null,
-        });
-      }
-      setIsReady(true);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [buildAppUser]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
