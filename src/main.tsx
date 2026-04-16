@@ -1,3 +1,5 @@
+// Initialize lovable auth callback handler on every page load
+import "@/integrations/lovable/index";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
