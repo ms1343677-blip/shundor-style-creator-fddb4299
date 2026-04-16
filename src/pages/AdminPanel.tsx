@@ -400,6 +400,7 @@ const AdminPanel = () => {
             <button key={item.id} onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] ${activeTab === item.id ? "bg-primary text-primary-foreground font-semibold" : "text-nav-foreground/80 active:bg-nav-foreground/10"}`}>
               <item.icon className="w-4 h-4" /> {item.label}
+              {item.badge ? <span className="ml-auto text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full font-bold">{item.badge}</span> : null}
             </button>
           ))}
         </nav>
