@@ -21,14 +21,18 @@ const LatestOrders = () => {
         .order("created_at", { ascending: false })
         .limit(10);
       if (!data || data.length === 0) return [];
-      // Fetch profile info for order users
+      // Fetch profile info for order users (best-effort, don't fail if blocked)
       const userIds = [...new Set(data.map((o: any) => o.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", userIds);
-      const profileMap: Record<string, any> = {};
-      (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+      let profileMap: Record<string, any> = {};
+      try {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email")
+          .in("user_id", userIds);
+        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+      } catch (e) {
+        // ignore - show orders without names
+      }
       return data.map((o: any) => ({
         ...o,
         product_name: o.products?.name,
