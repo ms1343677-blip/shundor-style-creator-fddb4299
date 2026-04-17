@@ -1,0 +1,3 @@
+-- See /database.sql in project root.
+-- This file is served at /database.sql for download from the Install page.
+-- (server.js serves the root database.sql via /api/install/download-db)

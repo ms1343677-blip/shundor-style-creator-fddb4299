@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { api } from "@/lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -14,26 +12,47 @@ const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { user, isReady } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  // If user is already logged in, redirect to home
+  // Handle Google OAuth callback redirect (token + user in URL)
   useEffect(() => {
-    if (isReady && user) {
-      navigate("/", { replace: true });
+    const token = searchParams.get("token");
+    const userParam = searchParams.get("user");
+    const error = searchParams.get("error");
+
+    if (error) {
+      toast({ title: "Google Login Failed", description: error, variant: "destructive" });
+      // clean URL
+      window.history.replaceState({}, "", "/login");
+      return;
     }
-  }, [isReady, user, navigate]);
+
+    if (token && userParam) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userParam));
+        localStorage.setItem("auth_token", token);
+        localStorage.setItem("auth_user", JSON.stringify(user));
+        toast({ title: "Welcome!", description: `${user.full_name || user.email} সফলভাবে লগইন!` });
+        navigate("/", { replace: true });
+      } catch {
+        toast({ title: "Error", description: "Invalid login response", variant: "destructive" });
+      }
+      return;
+    }
+
+    // Already logged in?
+    if (api.getToken()) navigate("/", { replace: true });
+  }, [searchParams, navigate]);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       if (isRegister) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        toast({ title: "সফল!", description: "ইমেইল ভেরিফাই করুন, তারপর লগইন করুন।" });
+        await api.register(email, password);
+        toast({ title: "সফল!", description: "একাউন্ট তৈরি হয়েছে। এখন লগইন করুন।" });
         setIsRegister(false);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        await api.login(email, password);
         navigate("/");
       }
     } catch (err: any) {
@@ -43,16 +62,9 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/login",
-    });
-    if (result.error) {
-      toast({ title: "Error", description: result.error.message, variant: "destructive" });
-      return;
-    }
-    if (result.redirected) return;
-    navigate("/");
+  const handleGoogleLogin = () => {
+    // Server-side OAuth flow — redirects to /api/auth/google → Google → /api/auth/google/callback → /login?token=...
+    window.location.href = "/api/auth/google";
   };
 
   return (
